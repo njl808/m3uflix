@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { Navigation } from "@/components/navigation";
 import { HeroSection } from "@/components/hero-section";
 import { ContentGrid } from "@/components/content-grid";
+import { ContentFilter } from "@/components/content-filter";
 import { SetupModal } from "@/components/setup-modal";
 import { EPGModal } from "@/components/epg-modal";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,8 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [epgModalOpen, setEpgModalOpen] = useState(false);
   const [selectedStreamId, setSelectedStreamId] = useState<number | null>(null);
+  const [filteredContent, setFilteredContent] = useState<ContentItem[]>([]);
+  const [filterSettings, setFilterSettings] = useState<any>(null);
 
   // API Queries
   const { data: authData, isError: authError } = useAuthentication(api);
@@ -71,8 +74,8 @@ export default function Home() {
     })), [seriesData]);
 
   const allContent = useMemo(() => [...liveContent, ...movieContent, ...seriesContent], [liveContent, movieContent, seriesContent]);
-  const searchResults = useSearch(allContent, searchQuery);
-  const favoriteContent = useMemo(() => allContent.filter(item => isFavorite(item.id)), [allContent, favorites]);
+  const searchResults = useSearch(filteredContent.length > 0 ? filteredContent : allContent, searchQuery);
+  const favoriteContent = useMemo(() => (filteredContent.length > 0 ? filteredContent : allContent).filter(item => isFavorite(item.id)), [filteredContent, allContent, favorites]);
 
   // Show setup modal if authentication fails
   useEffect(() => {
@@ -123,21 +126,23 @@ export default function Home() {
   };
 
   const getContentForSection = () => {
+    const contentToUse = filteredContent.length > 0 ? filteredContent : allContent;
+    
     if (searchQuery && searchResults.length > 0) {
       return searchResults;
     }
 
     switch (currentSection) {
       case 'live':
-        return liveContent;
+        return contentToUse.filter(item => item.type === 'live' && (!selectedCategory || item.categoryId === selectedCategory));
       case 'movies':
-        return movieContent;
+        return contentToUse.filter(item => item.type === 'movie' && (!selectedCategory || item.categoryId === selectedCategory));
       case 'series':
-        return seriesContent;
+        return contentToUse.filter(item => item.type === 'series' && (!selectedCategory || item.categoryId === selectedCategory));
       case 'favorites':
         return favoriteContent;
       default:
-        return allContent;
+        return contentToUse;
     }
   };
 
@@ -170,6 +175,22 @@ export default function Home() {
         onSettingsClick={() => setIsSetupOpen(true)}
         onSearch={setSearchQuery}
       />
+
+      {/* Content Filter - Add before the main content */}
+      <div className="container mx-auto px-4 pt-4">
+        <div className="flex justify-end mb-4">
+          <ContentFilter
+            content={allContent}
+            categories={[
+              ...(liveCategories || []),
+              ...(vodCategories || []),
+              ...(seriesCategories || [])
+            ]}
+            onFilterChange={setFilteredContent}
+            onSettingsChange={setFilterSettings}
+          />
+        </div>
+      </div>
 
       <main className="pt-16">
         {currentSection === 'home' && !searchQuery && (
