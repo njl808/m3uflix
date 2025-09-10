@@ -29,43 +29,8 @@ export default function Player() {
   const streamType = params?.type as 'live' | 'movie' | 'series';
   const streamId = params?.streamId ? parseInt(params.streamId) : null;
 
-  // Generate multiple stream URLs for fallback
-  const getStreamUrls = (streamId: number, streamType: 'live' | 'movie' | 'series') => {
-    if (!api) return [];
-    
-    const baseUrl = api.buildStreamUrl(streamId, streamType);
-    const urls = [];
-    
-    if (streamType === 'live') {
-      // For live streams, only try HLS formats (TS/MP4 rarely work for live)
-      urls.push({
-        url: baseUrl.replace('.ts', '.m3u8'),
-        format: 'HLS',
-        description: 'HLS Stream (recommended)'
-      });
-    } else {
-      // For VOD, try different extensions
-      urls.push({
-        url: baseUrl,
-        format: 'Original',
-        description: 'Original format'
-      });
-      urls.push({
-        url: baseUrl.replace(/\.[^.]+$/, '.mp4'),
-        format: 'MP4',
-        description: 'MP4 format'
-      });
-      urls.push({
-        url: baseUrl.replace(/\.[^.]+$/, '.mkv'),
-        format: 'MKV',
-        description: 'MKV format'
-      });
-    }
-    
-    return urls;
-  };
-
-  const streamUrls = streamId ? getStreamUrls(streamId, streamType) : [];
+  // Generate multiple stream URLs for fallback using enhanced API
+  const streamUrls = api && streamId ? api.buildStreamUrls(streamId, streamType) : [];
 
   // Auto-hide controls
   useEffect(() => {
@@ -346,29 +311,81 @@ export default function Player() {
   };
 
   const openExternalPlayer = () => {
-    if (streamUrls.length > 0) {
-      const streamUrl = streamUrls[0].url;
+    if (streamUrls.length > 0 && api && streamId) {
+      // Create direct URLs for external players (bypassing proxy)
+      const directUrls = [];
+      
+      if (streamType === 'live') {
+        directUrls.push({
+          url: api.buildDirectStreamUrl(streamId, streamType, 'm3u8'),
+          format: 'HLS Direct',
+          description: 'Direct HLS stream for external players'
+        });
+        directUrls.push({
+          url: api.buildDirectStreamUrl(streamId, streamType, 'ts'),
+          format: 'TS Direct',
+          description: 'Direct transport stream'
+        });
+      } else {
+        directUrls.push({
+          url: api.buildDirectStreamUrl(streamId, streamType, 'mp4'),
+          format: 'MP4 Direct',
+          description: 'Direct MP4 stream'
+        });
+        directUrls.push({
+          url: api.buildDirectStreamUrl(streamId, streamType, 'mkv'),
+          format: 'MKV Direct',
+          description: 'Direct MKV stream'
+        });
+      }
+      
+      const allUrls = [...streamUrls, ...directUrls];
+      const primaryUrl = directUrls[0]?.url || streamUrls[0]?.url;
+      
       // Create VLC protocol link
-      const vlcUrl = `vlc://${streamUrl}`;
+      const vlcUrl = `vlc://${primaryUrl}`;
       window.open(vlcUrl, '_blank');
       
-      // Also show the direct URL for manual copying
+      // Also show all URLs for manual copying
       const newWindow = window.open('', '_blank');
       if (newWindow) {
         newWindow.document.write(`
           <html>
-            <head><title>Stream URLs</title></head>
+            <head><title>IPTV Stream URLs - External Player</title></head>
             <body style="font-family: Arial, sans-serif; padding: 20px;">
               <h2>IPTV Stream URLs</h2>
-              <p>Copy any of these URLs to your preferred media player:</p>
+              <p><strong>Copy any URL to your preferred media player:</strong></p>
+              
+              <h3>🎯 Direct URLs (Recommended for External Players)</h3>
+              ${directUrls.map((stream, index) => `
+                <div style="margin: 10px 0; padding: 10px; border: 2px solid #4CAF50; border-radius: 5px; background: #f8fff8;">
+                  <strong>${stream.format}</strong> - ${stream.description}<br>
+                  <input type="text" value="${stream.url}" style="width: 100%; margin-top: 5px; font-family: monospace;" readonly>
+                  <button onclick="navigator.clipboard.writeText('${stream.url}')" style="margin-top: 5px; padding: 5px 10px;">📋 Copy URL</button>
+                </div>
+              `).join('')}
+              
+              <h3>🌐 Proxied URLs (For browser compatibility)</h3>
               ${streamUrls.map((stream, index) => `
                 <div style="margin: 10px 0; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
                   <strong>${stream.format}</strong> - ${stream.description}<br>
-                  <input type="text" value="${stream.url}" style="width: 100%; margin-top: 5px;" readonly>
-                  <button onclick="navigator.clipboard.writeText('${stream.url}')">Copy</button>
+                  <input type="text" value="${window.location.origin}${stream.url}" style="width: 100%; margin-top: 5px; font-family: monospace;" readonly>
+                  <button onclick="navigator.clipboard.writeText('${window.location.origin}${stream.url}')" style="margin-top: 5px; padding: 5px 10px;">📋 Copy URL</button>
                 </div>
               `).join('')}
-              <p style="margin-top: 20px;"><small>Recommended players: VLC, Kodi, PotPlayer, MPC-HC</small></p>
+              
+              <div style="margin-top: 30px; padding: 20px; background: #f0f8ff; border-radius: 10px;">
+                <h3>📱 Recommended Media Players</h3>
+                <ul style="line-height: 1.8;">
+                  <li><strong>VLC Media Player</strong> - Universal player for all formats</li>
+                  <li><strong>Kodi</strong> - Media center with IPTV add-ons</li>
+                  <li><strong>PotPlayer</strong> - Advanced Windows player</li>
+                  <li><strong>MPC-HC</strong> - Lightweight Windows player</li>
+                  <li><strong>IINA</strong> - Modern macOS player</li>
+                  <li><strong>GSE Smart IPTV</strong> - Mobile IPTV player</li>
+                </ul>
+                <p><small>💡 <strong>Tip:</strong> Use direct URLs for better performance and compatibility with external players.</small></p>
+              </div>
             </body>
           </html>
         `);
