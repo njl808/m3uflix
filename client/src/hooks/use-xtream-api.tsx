@@ -38,7 +38,7 @@ export function useXtreamAPI(config: XtreamConfig | null) {
 
 export function useAuthentication(api: XtreamAPI | null) {
   return useQuery({
-    queryKey: ['/api/auth'],
+    queryKey: ['/api/auth', api?.serverUrl, api?.username],
     queryFn: () => api?.authenticate(),
     enabled: !!api,
     retry: 1,
@@ -48,7 +48,7 @@ export function useAuthentication(api: XtreamAPI | null) {
 
 export function useLiveStreams(api: XtreamAPI | null, categoryId?: string) {
   return useQuery({
-    queryKey: ['/api/live-streams', categoryId],
+    queryKey: ['/api/live-streams', api?.serverUrl, categoryId],
     queryFn: () => api?.getLiveStreams(categoryId),
     enabled: !!api,
     staleTime: 2 * 60 * 1000, // 2 minutes
@@ -57,7 +57,7 @@ export function useLiveStreams(api: XtreamAPI | null, categoryId?: string) {
 
 export function useVODStreams(api: XtreamAPI | null, categoryId?: string) {
   return useQuery({
-    queryKey: ['/api/vod-streams', categoryId],
+    queryKey: ['/api/vod-streams', api?.serverUrl, categoryId],
     queryFn: () => api?.getVODStreams(categoryId),
     enabled: !!api,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -66,7 +66,7 @@ export function useVODStreams(api: XtreamAPI | null, categoryId?: string) {
 
 export function useSeries(api: XtreamAPI | null, categoryId?: string) {
   return useQuery({
-    queryKey: ['/api/series', categoryId],
+    queryKey: ['/api/series', api?.serverUrl, categoryId],
     queryFn: () => api?.getSeries(categoryId),
     enabled: !!api,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -75,7 +75,7 @@ export function useSeries(api: XtreamAPI | null, categoryId?: string) {
 
 export function useCategories(api: XtreamAPI | null, type: 'live' | 'vod' | 'series') {
   return useQuery({
-    queryKey: ['/api/categories', type],
+    queryKey: ['/api/categories', api?.serverUrl, type],
     queryFn: () => {
       if (type === 'live') return api?.getLiveCategories();
       if (type === 'vod') return api?.getVODCategories();
@@ -88,7 +88,7 @@ export function useCategories(api: XtreamAPI | null, type: 'live' | 'vod' | 'ser
 
 export function useEPG(api: XtreamAPI | null, streamId: number | null) {
   return useQuery({
-    queryKey: ['/api/epg', streamId],
+    queryKey: ['/api/epg', api?.serverUrl, streamId],
     queryFn: () => streamId ? api?.getEPG(streamId) : null,
     enabled: !!api && !!streamId,
     staleTime: 30 * 1000, // 30 seconds

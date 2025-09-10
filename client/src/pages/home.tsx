@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Navigation } from "@/components/navigation";
 import { HeroSection } from "@/components/hero-section";
 import { ContentGrid } from "@/components/content-grid";
@@ -36,41 +36,44 @@ export default function Home() {
   const { data: seriesCategories } = useCategories(api, 'series');
   const { data: epgData, isLoading: epgLoading } = useEPG(api, selectedStreamId);
 
-  // Process content for display
-  const liveContent: ContentItem[] = (liveStreams || []).map((stream: XtreamStream) => ({
-    id: `live-${stream.stream_id}`,
-    title: stream.name,
-    type: 'live' as const,
-    poster: stream.stream_icon,
-    streamId: stream.stream_id,
-    categoryId: stream.category_id,
-  }));
+  // Process content for display - memoized to prevent unnecessary re-renders
+  const liveContent: ContentItem[] = useMemo(() => 
+    (liveStreams || []).map((stream: XtreamStream) => ({
+      id: `live-${stream.stream_id}`,
+      title: stream.name,
+      type: 'live' as const,
+      poster: stream.stream_icon,
+      streamId: stream.stream_id,
+      categoryId: stream.category_id,
+    })), [liveStreams]);
 
-  const movieContent: ContentItem[] = (vodStreams || []).map((vod: XtreamVOD) => ({
-    id: `movie-${vod.stream_id}`,
-    title: vod.name,
-    type: 'movie' as const,
-    poster: vod.stream_icon,
-    rating: vod.rating_5based,
-    streamId: vod.stream_id,
-    categoryId: vod.category_id,
-  }));
+  const movieContent: ContentItem[] = useMemo(() => 
+    (vodStreams || []).map((vod: XtreamVOD) => ({
+      id: `movie-${vod.stream_id}`,
+      title: vod.name,
+      type: 'movie' as const,
+      poster: vod.stream_icon,
+      rating: vod.rating_5based,
+      streamId: vod.stream_id,
+      categoryId: vod.category_id,
+    })), [vodStreams]);
 
-  const seriesContent: ContentItem[] = (seriesData || []).map((series: XtreamSeries) => ({
-    id: `series-${series.series_id}`,
-    title: series.name,
-    type: 'series' as const,
-    poster: series.cover,
-    rating: series.rating_5based,
-    description: series.plot,
-    year: series.releaseDate,
-    streamId: series.series_id,
-    categoryId: series.category_id,
-  }));
+  const seriesContent: ContentItem[] = useMemo(() => 
+    (seriesData || []).map((series: XtreamSeries) => ({
+      id: `series-${series.series_id}`,
+      title: series.name,
+      type: 'series' as const,
+      poster: series.cover,
+      rating: series.rating_5based,
+      description: series.plot,
+      year: series.releaseDate,
+      streamId: series.series_id,
+      categoryId: series.category_id,
+    })), [seriesData]);
 
-  const allContent = [...liveContent, ...movieContent, ...seriesContent];
+  const allContent = useMemo(() => [...liveContent, ...movieContent, ...seriesContent], [liveContent, movieContent, seriesContent]);
   const searchResults = useSearch(allContent, searchQuery);
-  const favoriteContent = allContent.filter(item => isFavorite(item.id));
+  const favoriteContent = useMemo(() => allContent.filter(item => isFavorite(item.id)), [allContent, favorites]);
 
   // Show setup modal if authentication fails
   useEffect(() => {
