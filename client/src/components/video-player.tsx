@@ -19,7 +19,11 @@ export function VideoPlayer({ content, streamUrl, onClose }: VideoPlayerProps) {
   useEffect(() => {
     if (streamUrl && videoRef.current) {
       videoRef.current.src = streamUrl;
-      videoRef.current.play().catch(console.error);
+      videoRef.current.load(); // Ensure the video element reloads with new source
+      videoRef.current.play().catch((error) => {
+        console.error('Video playback error:', error);
+        // You could show a user-friendly error message here
+      });
     }
   }, [streamUrl]);
 

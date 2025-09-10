@@ -90,14 +90,15 @@ export class XtreamAPI {
   }
 
   buildStreamUrl(streamId: number, type: 'live' | 'movie' | 'series', extension: string = 'ts'): string {
-    if (type === 'live') {
-      return `${this.serverUrl}/live/${this.username}/${this.password}/${streamId}.${extension}`;
-    } else if (type === 'movie') {
-      return `${this.serverUrl}/movie/${this.username}/${this.password}/${streamId}.mp4`;
-    } else if (type === 'series') {
-      return `${this.serverUrl}/series/${this.username}/${this.password}/${streamId}.mp4`;
-    }
-    return '';
+    // Use the backend proxy for streaming to avoid CORS issues
+    const ext = type === 'live' ? extension : 'mp4';
+    const typeMap = {
+      'live': 'live',
+      'movie': 'movie', 
+      'series': 'series'
+    };
+    
+    return `/api/stream/${typeMap[type]}/${this.username}/${this.password}/${streamId}.${ext}?server=${encodeURIComponent(this.serverUrl)}`;
   }
 
   buildM3UUrl(): string {

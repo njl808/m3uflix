@@ -31,7 +31,7 @@ export function useXtreamAPI(config: XtreamConfig | null) {
     } else {
       setApi(null);
     }
-  }, [config]);
+  }, [config?.serverUrl, config?.username, config?.password]);
 
   return api;
 }
