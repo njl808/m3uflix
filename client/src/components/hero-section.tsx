@@ -88,13 +88,57 @@ export function HeroSection({ featuredContent, onPlay, onAddToList }: HeroSectio
                   <h1 className="text-2xl md:text-4xl font-bold text-white mb-3" data-testid="hero-title">
                     {content.title}
                   </h1>
+                  
+                  {/* Additional Info Row */}
+                  <div className="flex items-center gap-4 text-sm text-white/60 mb-3">
+                    {content.year && (
+                      <span className="flex items-center gap-1">
+                        📅 {content.year}
+                      </span>
+                    )}
+                    {content.rating && typeof content.rating === 'number' && content.rating > 0 && (
+                      <span className="flex items-center gap-1">
+                        ⭐ {content.rating.toFixed(1)}
+                      </span>
+                    )}
+                    <span className="flex items-center gap-1">
+                      🆔 {content.streamId}
+                    </span>
+                    {content.type === 'live' && (
+                      <span className="flex items-center gap-1 text-primary">
+                        🔴 LIVE
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {content.description && (
-                  <p className="text-sm md:text-base text-white/80 leading-relaxed line-clamp-3" data-testid="hero-description">
-                    {content.description}
-                  </p>
+                  <div>
+                    <p className="text-sm md:text-base text-white/80 leading-relaxed line-clamp-3" data-testid="hero-description">
+                      {content.description}
+                    </p>
+                  </div>
                 )}
+
+                {/* Technical Details */}
+                <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                  <div className="grid grid-cols-2 gap-2 text-xs text-white/60">
+                    <div>
+                      <span className="font-medium text-white/80">Type:</span> {content.type.toUpperCase()}
+                    </div>
+                    <div>
+                      <span className="font-medium text-white/80">Stream ID:</span> {content.streamId}
+                    </div>
+                    <div>
+                      <span className="font-medium text-white/80">Category:</span> {content.categoryId}
+                    </div>
+                    {content.rating && (
+                      <div>
+                        <span className="font-medium text-white/80">Rating:</span> {content.rating}/10
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 {featuredContent && (
                   <div className="pt-2 border-t border-white/20">
