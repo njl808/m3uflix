@@ -152,7 +152,7 @@ export default function Home() {
   const searchResults = useSearch(filteredContent.length > 0 ? filteredContent : allContent, searchQuery);
   const favoriteContent = useMemo(() => (filteredContent.length > 0 ? filteredContent : allContent).filter(item => isFavorite(item.id)), [filteredContent, allContent, favorites]);
 
-  // Boutique cycling logic
+  // Boutique cycling logic - use raw API data to bypass filters
   const boutiqueContent = useMemo(() => {
     if (!homepageLayout.heroCycling?.enabled) {
       return [];
@@ -160,31 +160,60 @@ export default function Home() {
 
     const { movieCategoryIds = [], seriesCategoryIds = [] } = homepageLayout.heroCycling;
     
-    // Get movies from selected categories
-    const selectedMovies = movieContent.filter(movie => 
-      movieCategoryIds.includes(movie.categoryId)
-    );
+    // Normalize IDs to strings for comparison
+    const movieIds = movieCategoryIds.map(String);
+    const seriesIds = seriesCategoryIds.map(String);
     
-    // Get series from selected categories
-    const selectedSeries = seriesContent.filter(series => 
-      seriesCategoryIds.includes(series.categoryId)
-    );
+    // Get movies directly from raw API data to bypass filtering
+    const selectedMovies = (vodStreams || [])
+      .filter(vod => movieIds.includes(String(vod.category_id)))
+      .map((vod) => ({
+        id: `movie-${vod.stream_id}`,
+        title: vod.name,
+        type: 'movie' as const,
+        poster: vod.stream_icon,
+        rating: vod.rating_5based,
+        streamId: vod.stream_id,
+        categoryId: vod.category_id,
+      }));
+    
+    // Get series directly from raw API data to bypass filtering  
+    const selectedSeries = (seriesData || [])
+      .filter(series => seriesIds.includes(String(series.category_id)))
+      .map((series) => ({
+        id: `series-${series.series_id}`,
+        title: series.name,
+        type: 'series' as const,
+        poster: series.cover,
+        rating: series.rating_5based,
+        streamId: series.series_id,
+        categoryId: series.category_id,
+        description: series.plot,
+        year: series.releaseDate,
+      }));
     
     // Combine and shuffle for variety
     const combined = [...selectedMovies, ...selectedSeries];
     return combined.sort(() => Math.random() - 0.5);
-  }, [movieContent, seriesContent, homepageLayout.heroCycling]);
+  }, [vodStreams, seriesData, homepageLayout.heroCycling]);
 
   // Hero content cycling effect
   useEffect(() => {
-    if (!homepageLayout.heroCycling?.enabled || boutiqueContent.length === 0) {
-      // Use static hero content or fallback
+    if (!homepageLayout.heroCycling?.enabled) {
+      // Use static hero content or fallback when cycling is disabled
       if (homepageLayout.heroContentId) {
         const staticContent = allContent.find(item => item.id === homepageLayout.heroContentId) || movieContent[0];
         setHeroContent(staticContent);
       } else {
         setHeroContent(movieContent[0] || null);
       }
+      return;
+    }
+
+    if (boutiqueContent.length === 0) {
+      // Cycling is enabled but no content matches selected categories
+      console.log('Hero cycling enabled but no content found for selected categories');
+      setHeroContent(movieContent[0] || null);
       return;
     }
 
