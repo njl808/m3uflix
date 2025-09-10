@@ -1,0 +1,59 @@
+ date: 'Wed, 10 Sep 2025 21:14:57 GMT',
+  'content-type': 'text/html; charset=UTF-8',
+  connection: 'close',
+  'x-xss-protection': '1; mode=block',
+  'x-content-type-options': 'nosniff',
+  'referrer-policy': 'same-origin',
+  'permissions-policy': 'interest-cohort=()'
+}
+9:14:57 PM [express] GET /api/stream/series/D1C94A9/VN8L8BT/1294047.mp4 200 in 3050ms
+9:15:21 PM [express] POST /api/xtream/streams 200 in 1365ms :: [{"num":1,"name":"##### ENGLISH #####…
+9:15:23 PM [express] POST /api/xtream/vod-info 200 in 211ms :: {"info":{"kinopoisk_url":"https://www…
+[VIDEO PROXY] Requesting: http://line.4smart.in/movie/D1C94A9/***/1293993.mp4
+[VIDEO PROXY] Response status: 200, headers: Headers {
+  server: 'nginx',
+  date: 'Wed, 10 Sep 2025 21:15:27 GMT',
+  'content-type': 'text/html; charset=UTF-8',
+  connection: 'close',
+  'x-xss-protection': '1; mode=block',
+  'x-content-type-options': 'nosniff',
+  'referrer-policy': 'same-origin',
+  'permissions-policy': 'interest-cohort=()'
+}
+9:15:27 PM [express] GET /api/stream/movie/D1C94A9/VN8L8BT/1293993.mp4 200 in 2689ms
+[VIDEO PROXY] Requesting: http://line.4smart.in/movie/D1C94A9/***/1293993.mp4
+[VIDEO PROXY] Response status: 200, headers: Headers {
+  server: 'nginx',
+  date: 'Wed, 10 Sep 2025 21:15:56 GMT',
+  'content-type': 'text/html; charset=UTF-8',
+  connection: 'close',
+  'x-xss-protection': '1; mode=block',
+  'x-content-type-options': 'nosniff',
+  'referrer-policy': 'same-origin',
+  'permissions-policy': 'interest-cohort=()'
+}
+9:15:56 PM [express] GET /api/stream/movie/D1C94A9/VN8L8BT/1293993.mp4 200 in 2722ms
+[VIDEO PROXY] Requesting: http://line.4smart.in/movie/D1C94A9/***/1293993.mp4
+[VIDEO PROXY] Response status: 200, headers: Headers {
+  server: 'nginx',
+  date: 'Wed, 10 Sep 2025 21:16:12 GMT',
+  'content-type': 'text/html; charset=UTF-8',
+  connection: 'close',
+  'x-xss-protection': '1; mode=block',
+  'x-content-type-options': 'nosniff',
+  'referrer-policy': 'same-origin',
+  'permissions-policy': 'interest-cohort=()'
+}
+9:16:12 PM [express] GET /api/stream/movie/D1C94A9/VN8L8BT/1293993.mp4 200 in 3748ms
+[VIDEO PROXY] Requesting: http://line.4smart.in/movie/D1C94A9/***/1293993.mp4
+[VIDEO PROXY] Response status: 200, headers: Headers {
+  server: 'nginx',
+  date: 'Wed, 10 Sep 2025 21:16:37 GMT',
+  'content-type': 'text/html; charset=UTF-8',
+  connection: 'close',
+  'x-xss-protection': '1; mode=block',
+  'x-content-type-options': 'nosniff',
+  'referrer-policy': 'same-origin',
+  'permissions-policy': 'interest-cohort=()'
+}
+9:16:37 PM [express] GET /api/stream/movie/D1C94A9/VN8L8BT/1293993.mp4 200 in 2516ms

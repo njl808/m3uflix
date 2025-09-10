@@ -158,7 +158,14 @@ export class XtreamAPI {
         extension: 'ts'
       });
     } else {
-      // For VOD content, try proven formats first
+      // For VOD content, try MKV first since MP4 is being blocked
+      urls.push({
+        url: this.buildStreamUrl(streamId, type, { format: 'mkv' }),
+        format: 'MKV',
+        description: 'MKV format (working)',
+        extension: 'mkv'
+      });
+      
       urls.push({
         url: this.buildStreamUrl(streamId, type, { format: 'original' }),
         format: 'Original',
@@ -169,17 +176,8 @@ export class XtreamAPI {
       urls.push({
         url: this.buildStreamUrl(streamId, type, { format: 'mp4' }),
         format: 'MP4',
-        description: 'MP4 format (most compatible)',
+        description: 'MP4 format (backup)',
         extension: 'mp4'
-      });
-      
-      // Only include MKV if it's likely to be available
-      // Note: MKV may not be available on all Xtream servers
-      urls.push({
-        url: this.buildStreamUrl(streamId, type, { format: 'mkv' }),
-        format: 'MKV',
-        description: 'MKV format (if available)',
-        extension: 'mkv'
       });
     }
     
