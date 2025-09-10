@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useLocation, useRoute } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Play, Pause, Volume2, VolumeX, Maximize, RotateCcw, ExternalLink } from "lucide-react";
@@ -14,6 +14,10 @@ export default function Player() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const loadTokenRef = useRef<number>(0);
+  // Timeout management refs to prevent race conditions
+  const playTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const unmuteHintTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true); // Start muted for better autoplay
   const [currentTime, setCurrentTime] = useState(0);
@@ -31,6 +35,30 @@ export default function Player() {
 
   // Generate multiple stream URLs for fallback using enhanced API
   const streamUrls = api && streamId ? api.buildStreamUrls(streamId, streamType) : [];
+
+  // IPTV-optimized timeout helpers for better streaming reliability
+  const playDelay = useMemo(() => streamType === 'live' ? 3000 : 10000, [streamType]);
+  const getRetryDelay = useCallback((attempt: number) => {
+    const base = streamType === 'live' ? 4000 : 9000;
+    const max = streamType === 'live' ? 7000 : 15000;
+    return Math.min(Math.round(base * Math.pow(1.5, Math.max(0, attempt))), max);
+  }, [streamType]);
+
+  // Function to clear all pending timeouts to prevent race conditions
+  const clearAllTimeouts = useCallback(() => {
+    if (playTimeoutRef.current) {
+      clearTimeout(playTimeoutRef.current);
+      playTimeoutRef.current = null;
+    }
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
+    if (unmuteHintTimeoutRef.current) {
+      clearTimeout(unmuteHintTimeoutRef.current);
+      unmuteHintTimeoutRef.current = null;
+    }
+  }, []);
 
   // Auto-hide controls
   useEffect(() => {
@@ -96,6 +124,9 @@ export default function Player() {
     // Generate unique load token to prevent race conditions
     const currentToken = ++loadTokenRef.current;
     
+    // Clear all pending timeouts to prevent race conditions from previous attempts
+    clearAllTimeouts();
+    
     if (!streamUrls.length || !videoRef.current || urlIndex >= streamUrls.length) {
       if (streamType === 'live') {
         setError('Live stream formats not available. Try external player below.');
@@ -160,13 +191,24 @@ export default function Player() {
               videoRef.current.muted = true;
               setIsMuted(true);
             }
-            videoRef.current?.play().then(() => {
-              setShowUnmuteHint(true);
-              setTimeout(() => setShowUnmuteHint(false), 5000);
-            }).catch((err) => {
-              console.error('HLS autoplay failed:', err);
-              setError('Click play to start the video');
-            });
+            
+            // Apply playDelay for VOD to allow proper buffering, immediate for live
+            const hlsPlayDelay = streamType === 'live' ? 0 : playDelay;
+            playTimeoutRef.current = setTimeout(() => {
+              if (currentToken === loadTokenRef.current) {
+                videoRef.current?.play().then(() => {
+                  setShowUnmuteHint(true);
+                  unmuteHintTimeoutRef.current = setTimeout(() => {
+                    if (currentToken === loadTokenRef.current) {
+                      setShowUnmuteHint(false);
+                    }
+                  }, 5000);
+                }).catch((err) => {
+                  console.error('HLS autoplay failed:', err);
+                  setError('Click play to start the video');
+                });
+              }
+            }, hlsPlayDelay);
           }
         });
 
@@ -176,7 +218,11 @@ export default function Player() {
             setIsLoading(false);
             if (urlIndex < streamUrls.length - 1) {
               console.log('HLS failed, trying next format...');
-              setTimeout(() => loadStream(urlIndex + 1), 1000);
+              retryTimeoutRef.current = setTimeout(() => {
+                if (currentToken === loadTokenRef.current) {
+                  loadStream(urlIndex + 1);
+                }
+              }, getRetryDelay(urlIndex));
             } else if (streamType === 'live') {
               setError('Live stream failed. Please try external player below.');
             } else {
@@ -195,21 +241,29 @@ export default function Player() {
           videoRef.current.load();
           setIsLoading(false);
           
-          setTimeout(() => {
+          playTimeoutRef.current = setTimeout(() => {
             if (currentToken === loadTokenRef.current) {
               videoRef.current?.play().then(() => {
                 setShowUnmuteHint(true);
-                setTimeout(() => setShowUnmuteHint(false), 5000);
+                unmuteHintTimeoutRef.current = setTimeout(() => {
+                  if (currentToken === loadTokenRef.current) {
+                    setShowUnmuteHint(false);
+                  }
+                }, 5000);
               }).catch((err) => {
                 console.error('Native HLS autoplay failed:', err);
                 if (urlIndex < streamUrls.length - 1) {
-                  loadStream(urlIndex + 1);
+                  retryTimeoutRef.current = setTimeout(() => {
+                    if (currentToken === loadTokenRef.current) {
+                      loadStream(urlIndex + 1);
+                    }
+                  }, getRetryDelay(urlIndex));
                 } else {
                   setError('Click play to start the video');
                 }
               });
             }
-          }, 1000);
+          }, playDelay);
         }
 
       } else {
@@ -222,22 +276,30 @@ export default function Player() {
           videoRef.current.load();
           setIsLoading(false);
           
-          setTimeout(() => {
+          playTimeoutRef.current = setTimeout(() => {
             if (currentToken === loadTokenRef.current) {
               videoRef.current?.play().then(() => {
                 setShowUnmuteHint(true);
-                setTimeout(() => setShowUnmuteHint(false), 5000);
+                unmuteHintTimeoutRef.current = setTimeout(() => {
+                  if (currentToken === loadTokenRef.current) {
+                    setShowUnmuteHint(false);
+                  }
+                }, 5000);
               }).catch((err) => {
                 console.error('Direct playback failed:', err);
                 if (urlIndex < streamUrls.length - 1) {
                   console.log('Direct playback failed, trying next format...');
-                  setTimeout(() => loadStream(urlIndex + 1), 1000);
+                  retryTimeoutRef.current = setTimeout(() => {
+                    if (currentToken === loadTokenRef.current) {
+                      loadStream(urlIndex + 1);
+                    }
+                  }, getRetryDelay(urlIndex));
                 } else {
                   setError('Unable to play this stream with any available format');
                 }
               });
             }
-          }, 1000);
+          }, playDelay);
         }
       }
 
@@ -246,7 +308,11 @@ export default function Player() {
       if (currentToken === loadTokenRef.current) {
         setIsLoading(false);
         if (urlIndex < streamUrls.length - 1) {
-          setTimeout(() => loadStream(urlIndex + 1), 1000);
+          retryTimeoutRef.current = setTimeout(() => {
+            if (currentToken === loadTokenRef.current) {
+              loadStream(urlIndex + 1);
+            }
+          }, getRetryDelay(urlIndex));
         } else {
           setError('Failed to load stream with any available format');
         }
@@ -257,6 +323,8 @@ export default function Player() {
   // Load stream when component mounts or stream changes
   useEffect(() => {
     if (streamUrls.length > 0) {
+      // Generate new load token to cancel any existing attempts
+      loadTokenRef.current = Date.now();
       loadStream(0);
     }
     
@@ -305,6 +373,8 @@ export default function Player() {
   };
 
   const refreshStream = () => {
+    // Generate new load token to cancel any existing attempts
+    loadTokenRef.current = Date.now();
     setRetryCount(prev => prev + 1);
     setError(null);
     loadStream(0);
