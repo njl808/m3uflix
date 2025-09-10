@@ -51,6 +51,12 @@ interface CustomSection {
 interface HomepageLayout {
   showHero: boolean;
   heroContentId?: string;
+  heroCycling?: {
+    enabled: boolean;
+    movieCategoryIds: string[];
+    seriesCategoryIds: string[];
+    intervalSeconds: number;
+  };
   customSections: CustomSection[];
   defaultSections: {
     live: boolean;
@@ -729,68 +735,306 @@ export default function Admin() {
                   </div>
                   
                   {layout.showHero && (
-                    <div className="space-y-3 pl-4 border-l-2 border-muted">
-                      <Label>Hero Content Selection</Label>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Choose from Movies</Label>
-                          <Select
-                            value={layout.heroContentId?.startsWith('movie-') ? layout.heroContentId : ''}
-                            onValueChange={(value) => setLayout(prev => ({ 
-                              ...prev, 
-                              heroContentId: value === 'none' ? undefined : value
-                            }))}
-                          >
-                            <SelectTrigger data-testid="select-hero-movie">
-                              <SelectValue placeholder={`Select a movie... (${(vodStreams || []).length} available)`} />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-64">
-                              <SelectItem value="none">None selected</SelectItem>
-                              {(vodStreams || []).slice(0, 100).map(movie => (
-                                <SelectItem key={movie.stream_id} value={`movie-${movie.stream_id}`}>
-                                  {movie.name}
-                                </SelectItem>
-                              ))}
-                              {(vodStreams || []).length > 100 && (
-                                <SelectItem value="more-info" disabled>
-                                  ... and {(vodStreams || []).length - 100} more (search to find specific titles)
-                                </SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Choose from Series</Label>
-                          <Select
-                            value={layout.heroContentId?.startsWith('series-') ? layout.heroContentId : ''}
-                            onValueChange={(value) => setLayout(prev => ({ 
-                              ...prev, 
-                              heroContentId: value === 'none' ? undefined : value
-                            }))}
-                          >
-                            <SelectTrigger data-testid="select-hero-series">
-                              <SelectValue placeholder={`Select a series... (${(seriesData || []).length} available)`} />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-64">
-                              <SelectItem value="none">None selected</SelectItem>
-                              {(seriesData || []).slice(0, 100).map(series => (
-                                <SelectItem key={series.series_id} value={`series-${series.series_id}`}>
-                                  {series.name}
-                                </SelectItem>
-                              ))}
-                              {(seriesData || []).length > 100 && (
-                                <SelectItem value="more-info" disabled>
-                                  ... and {(seriesData || []).length - 100} more (search to find specific titles)
-                                </SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Current hero: {layout.heroContentId ? 
-                          (layout.heroContentId.startsWith('movie-') ? 'Movie' : 'Series') : 'None selected'}
+                    <div className="space-y-4 pl-4 border-l-2 border-muted">
+                      <Label className="text-base font-semibold">Hero Boutique Cycling</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Select movie and series categories to cycle through on the hero section
                       </p>
+                      
+                      {/* Cycling Settings */}
+                      <div className="space-y-3 bg-muted/30 p-4 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label htmlFor="enable-cycling">Enable Content Cycling</Label>
+                            <p className="text-xs text-muted-foreground">Automatically rotate through selected boutique content</p>
+                          </div>
+                          <Switch
+                            id="enable-cycling"
+                            checked={layout.heroCycling?.enabled || false}
+                            onCheckedChange={(checked) => 
+                              setLayout(prev => ({ 
+                                ...prev, 
+                                heroCycling: { 
+                                  ...prev.heroCycling,
+                                  enabled: checked,
+                                  // Auto-select top movie and series categories when first enabled
+                                  movieCategoryIds: checked ? 
+                                    (prev.heroCycling?.movieCategoryIds?.length ? prev.heroCycling.movieCategoryIds : 
+                                      [(vodCategories || [])[0]?.category_id].filter(Boolean)) : [],
+                                  seriesCategoryIds: checked ? 
+                                    (prev.heroCycling?.seriesCategoryIds?.length ? prev.heroCycling.seriesCategoryIds : 
+                                      [(seriesCategories || [])[0]?.category_id].filter(Boolean)) : [],
+                                  intervalSeconds: prev.heroCycling?.intervalSeconds || 8
+                                }
+                              }))
+                            }
+                            data-testid="toggle-hero-cycling"
+                          />
+                        </div>
+                        
+                        {layout.heroCycling?.enabled && (
+                          <div className="space-y-3 pl-4 border-l-2 border-primary/30">
+                            <div className="space-y-2">
+                              <Label>Cycle Interval</Label>
+                              <Select
+                                value={layout.heroCycling?.intervalSeconds?.toString() || '8'}
+                                onValueChange={(value) => setLayout(prev => ({ 
+                                  ...prev, 
+                                  heroCycling: { 
+                                    ...prev.heroCycling!,
+                                    intervalSeconds: parseInt(value)
+                                  }
+                                }))}
+                              >
+                                <SelectTrigger className="w-48" data-testid="select-cycle-interval">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="5">5 seconds</SelectItem>
+                                  <SelectItem value="8">8 seconds</SelectItem>
+                                  <SelectItem value="10">10 seconds</SelectItem>
+                                  <SelectItem value="15">15 seconds</SelectItem>
+                                  <SelectItem value="20">20 seconds</SelectItem>
+                                  <SelectItem value="30">30 seconds</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Movie Boutique Selection */}
+                      {layout.heroCycling?.enabled && (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Label className="font-medium">Movie Boutiques</Label>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const allIds = (vodCategories || []).map(cat => cat.category_id);
+                                  setLayout(prev => ({
+                                    ...prev,
+                                    heroCycling: {
+                                      ...prev.heroCycling!,
+                                      movieCategoryIds: allIds
+                                    }
+                                  }));
+                                }}
+                                data-testid="select-all-movies"
+                              >
+                                Select All
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const topIds = (vodCategories || []).slice(0, 5).map(cat => cat.category_id);
+                                  setLayout(prev => ({
+                                    ...prev,
+                                    heroCycling: {
+                                      ...prev.heroCycling!,
+                                      movieCategoryIds: topIds
+                                    }
+                                  }));
+                                }}
+                                data-testid="select-top-5-movies"
+                              >
+                                Top 5
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setLayout(prev => ({
+                                    ...prev,
+                                    heroCycling: {
+                                      ...prev.heroCycling!,
+                                      movieCategoryIds: []
+                                    }
+                                  }));
+                                }}
+                                data-testid="clear-all-movies"
+                              >
+                                Clear
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-48 overflow-y-auto border rounded p-3">
+                            {(vodCategories || []).map(category => (
+                              <div key={category.category_id} className="flex items-center space-x-2 hover:bg-muted/50 p-2 rounded">
+                                <input
+                                  type="checkbox"
+                                  checked={layout.heroCycling?.movieCategoryIds?.includes(category.category_id) || false}
+                                  onChange={() => {
+                                    const currentIds = layout.heroCycling?.movieCategoryIds || [];
+                                    const newIds = currentIds.includes(category.category_id)
+                                      ? currentIds.filter(id => id !== category.category_id)
+                                      : [...currentIds, category.category_id];
+                                    setLayout(prev => ({
+                                      ...prev,
+                                      heroCycling: {
+                                        ...prev.heroCycling!,
+                                        movieCategoryIds: newIds
+                                      }
+                                    }));
+                                  }}
+                                  className="text-sm"
+                                  data-testid={`movie-boutique-${category.category_id}`}
+                                />
+                                <span className="text-sm truncate">{category.category_name}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Selected {layout.heroCycling?.movieCategoryIds?.length || 0} movie categories
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Series Boutique Selection */}
+                      {layout.heroCycling?.enabled && (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Label className="font-medium">Series Boutiques</Label>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const allIds = (seriesCategories || []).map(cat => cat.category_id);
+                                  setLayout(prev => ({
+                                    ...prev,
+                                    heroCycling: {
+                                      ...prev.heroCycling!,
+                                      seriesCategoryIds: allIds
+                                    }
+                                  }));
+                                }}
+                                data-testid="select-all-series"
+                              >
+                                Select All
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const topIds = (seriesCategories || []).slice(0, 5).map(cat => cat.category_id);
+                                  setLayout(prev => ({
+                                    ...prev,
+                                    heroCycling: {
+                                      ...prev.heroCycling!,
+                                      seriesCategoryIds: topIds
+                                    }
+                                  }));
+                                }}
+                                data-testid="select-top-5-series"
+                              >
+                                Top 5
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setLayout(prev => ({
+                                    ...prev,
+                                    heroCycling: {
+                                      ...prev.heroCycling!,
+                                      seriesCategoryIds: []
+                                    }
+                                  }));
+                                }}
+                                data-testid="clear-all-series"
+                              >
+                                Clear
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-48 overflow-y-auto border rounded p-3">
+                            {(seriesCategories || []).map(category => (
+                              <div key={category.category_id} className="flex items-center space-x-2 hover:bg-muted/50 p-2 rounded">
+                                <input
+                                  type="checkbox"
+                                  checked={layout.heroCycling?.seriesCategoryIds?.includes(category.category_id) || false}
+                                  onChange={() => {
+                                    const currentIds = layout.heroCycling?.seriesCategoryIds || [];
+                                    const newIds = currentIds.includes(category.category_id)
+                                      ? currentIds.filter(id => id !== category.category_id)
+                                      : [...currentIds, category.category_id];
+                                    setLayout(prev => ({
+                                      ...prev,
+                                      heroCycling: {
+                                        ...prev.heroCycling!,
+                                        seriesCategoryIds: newIds
+                                      }
+                                    }));
+                                  }}
+                                  className="text-sm"
+                                  data-testid={`series-boutique-${category.category_id}`}
+                                />
+                                <span className="text-sm truncate">{category.category_name}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Selected {layout.heroCycling?.seriesCategoryIds?.length || 0} series categories
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Fallback Static Selection */}
+                      {!layout.heroCycling?.enabled && (
+                        <div className="space-y-3 bg-muted/20 p-3 rounded">
+                          <Label className="text-sm font-medium">Static Hero Content (Fallback)</Label>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label className="text-xs">Choose from Movies</Label>
+                              <Select
+                                value={layout.heroContentId?.startsWith('movie-') ? layout.heroContentId : ''}
+                                onValueChange={(value) => setLayout(prev => ({ 
+                                  ...prev, 
+                                  heroContentId: value === 'none' ? undefined : value
+                                }))}
+                              >
+                                <SelectTrigger data-testid="select-hero-movie">
+                                  <SelectValue placeholder="Select a movie..." />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-48">
+                                  <SelectItem value="none">None selected</SelectItem>
+                                  {(vodStreams || []).slice(0, 50).map(movie => (
+                                    <SelectItem key={movie.stream_id} value={`movie-${movie.stream_id}`}>
+                                      {movie.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-xs">Choose from Series</Label>
+                              <Select
+                                value={layout.heroContentId?.startsWith('series-') ? layout.heroContentId : ''}
+                                onValueChange={(value) => setLayout(prev => ({ 
+                                  ...prev, 
+                                  heroContentId: value === 'none' ? undefined : value
+                                }))}
+                              >
+                                <SelectTrigger data-testid="select-hero-series">
+                                  <SelectValue placeholder="Select a series..." />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-48">
+                                  <SelectItem value="none">None selected</SelectItem>
+                                  {(seriesData || []).slice(0, 50).map(series => (
+                                    <SelectItem key={series.series_id} value={`series-${series.series_id}`}>
+                                      {series.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

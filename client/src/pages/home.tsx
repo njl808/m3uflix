@@ -28,6 +28,10 @@ export default function Home() {
   const [filteredContent, setFilteredContent] = useState<ContentItem[]>([]);
   const [filterSettings, setFilterSettings] = useState<any>(null);
   
+  // Hero cycling state
+  const [heroContent, setHeroContent] = useState<ContentItem | null>(null);
+  const [cycleIndex, setCycleIndex] = useState(0);
+  
   // Load homepage layout from admin panel
   const [homepageLayout, setHomepageLayout] = useState(() => {
     const saved = localStorage.getItem('iptv-homepage-layout');
@@ -139,6 +143,61 @@ export default function Home() {
   const allContent = useMemo(() => [...liveContent, ...movieContent, ...seriesContent], [liveContent, movieContent, seriesContent]);
   const searchResults = useSearch(filteredContent.length > 0 ? filteredContent : allContent, searchQuery);
   const favoriteContent = useMemo(() => (filteredContent.length > 0 ? filteredContent : allContent).filter(item => isFavorite(item.id)), [filteredContent, allContent, favorites]);
+
+  // Boutique cycling logic
+  const boutiqueContent = useMemo(() => {
+    if (!homepageLayout.heroCycling?.enabled) {
+      return [];
+    }
+
+    const { movieCategoryIds = [], seriesCategoryIds = [] } = homepageLayout.heroCycling;
+    
+    // Get movies from selected categories
+    const selectedMovies = movieContent.filter(movie => 
+      movieCategoryIds.includes(movie.categoryId)
+    );
+    
+    // Get series from selected categories
+    const selectedSeries = seriesContent.filter(series => 
+      seriesCategoryIds.includes(series.categoryId)
+    );
+    
+    // Combine and shuffle for variety
+    const combined = [...selectedMovies, ...selectedSeries];
+    return combined.sort(() => Math.random() - 0.5);
+  }, [movieContent, seriesContent, homepageLayout.heroCycling]);
+
+  // Hero content cycling effect
+  useEffect(() => {
+    if (!homepageLayout.heroCycling?.enabled || boutiqueContent.length === 0) {
+      // Use static hero content or fallback
+      if (homepageLayout.heroContentId) {
+        const staticContent = allContent.find(item => item.id === homepageLayout.heroContentId) || movieContent[0];
+        setHeroContent(staticContent);
+      } else {
+        setHeroContent(movieContent[0] || null);
+      }
+      return;
+    }
+
+    // Set initial content
+    if (boutiqueContent.length > 0) {
+      setHeroContent(boutiqueContent[0]);
+      setCycleIndex(0);
+    }
+
+    // Set up cycling interval
+    const intervalMs = (homepageLayout.heroCycling?.intervalSeconds || 8) * 1000;
+    const interval = setInterval(() => {
+      setCycleIndex(prev => {
+        const nextIndex = (prev + 1) % boutiqueContent.length;
+        setHeroContent(boutiqueContent[nextIndex]);
+        return nextIndex;
+      });
+    }, intervalMs);
+
+    return () => clearInterval(interval);
+  }, [boutiqueContent, homepageLayout.heroCycling, homepageLayout.heroContentId, movieContent, allContent]);
 
   // Show setup modal if authentication fails
   useEffect(() => {
@@ -262,11 +321,7 @@ export default function Home() {
       <main className="pt-16">
         {currentSection === 'home' && !searchQuery && homepageLayout.showHero && (
           <HeroSection
-            featuredContent={
-              homepageLayout.heroContentId 
-                ? allContent.find(item => item.id === homepageLayout.heroContentId) || movieContent[0]
-                : movieContent[0]
-            }
+            featuredContent={heroContent || movieContent[0]}
             onPlay={handlePlayContent}
             onAddToList={handleAddToList}
           />
