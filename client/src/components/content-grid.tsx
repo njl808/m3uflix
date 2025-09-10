@@ -80,7 +80,7 @@ export function ContentGrid({ title, content, onContentClick, isLoading }: Conte
                   {item.year}
                 </p>
               )}
-              {item.rating && (
+              {item.rating && typeof item.rating === 'number' && item.rating > 0 && (
                 <div className="flex items-center space-x-1 mt-1">
                   <Star className="w-3 h-3 text-yellow-400 fill-current" />
                   <span className="text-xs text-muted-foreground" data-testid={`content-rating-${item.id}`}>
