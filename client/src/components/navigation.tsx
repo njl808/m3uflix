@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Settings } from "lucide-react";
+import { Settings, Shield } from "lucide-react";
+import { useLocation } from "wouter";
 
 interface NavigationProps {
   currentSection: string;
@@ -12,6 +13,7 @@ interface NavigationProps {
 
 export function Navigation({ currentSection, onSectionChange, onSettingsClick, onSearch }: NavigationProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [, setLocation] = useLocation();
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
@@ -63,6 +65,15 @@ export function Navigation({ currentSection, onSectionChange, onSettingsClick, o
                 data-testid="input-search"
               />
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setLocation('/admin')}
+              data-testid="button-admin"
+              title="M3U Admin Panel"
+            >
+              <Shield className="w-6 h-6" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"
