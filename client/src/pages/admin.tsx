@@ -62,6 +62,9 @@ interface HomepageLayout {
     live: boolean;
     movies: boolean;
     series: boolean;
+    liveCardLimit?: number;
+    moviesCardLimit?: number;
+    seriesCardLimit?: number;
   };
   regionalProfiles: RegionalProfile[];
   activeProfile?: string;
@@ -91,7 +94,10 @@ export default function Admin() {
       defaultSections: {
         live: true,
         movies: true,
-        series: true
+        series: true,
+        liveCardLimit: 14,
+        moviesCardLimit: 14,
+        seriesCardLimit: 14
       },
       regionalProfiles: [
         {
@@ -316,7 +322,10 @@ export default function Admin() {
       defaultSections: {
         live: true,
         movies: true,
-        series: true
+        series: true,
+        liveCardLimit: 14,
+        moviesCardLimit: 14,
+        seriesCardLimit: 14
       },
       regionalProfiles: [],
       globalCategoryFilters: [],
@@ -1249,9 +1258,32 @@ export default function Admin() {
                               </div>
                             ))}
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            Selected {(layout.globalCategoryFilters || []).filter(f => f.type === 'movie' && f.visible).length} movie categories
-                          </p>
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs text-muted-foreground">
+                              Selected {(layout.globalCategoryFilters || []).filter(f => f.type === 'movie' && f.visible).length} movie categories
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <Label className="text-xs">Cards to show:</Label>
+                              <Input
+                                type="number"
+                                min="1"
+                                max="100"
+                                value={layout.defaultSections.moviesCardLimit || 14}
+                                onChange={(e) => {
+                                  const value = parseInt(e.target.value) || 14;
+                                  setLayout(prev => ({
+                                    ...prev,
+                                    defaultSections: {
+                                      ...prev.defaultSections,
+                                      moviesCardLimit: value
+                                    }
+                                  }));
+                                }}
+                                className="w-16 h-8 text-xs"
+                                data-testid="movies-card-limit"
+                              />
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1356,9 +1388,32 @@ export default function Admin() {
                               </div>
                             ))}
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            Selected {(layout.globalCategoryFilters || []).filter(f => f.type === 'series' && f.visible).length} series categories
-                          </p>
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs text-muted-foreground">
+                              Selected {(layout.globalCategoryFilters || []).filter(f => f.type === 'series' && f.visible).length} series categories
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <Label className="text-xs">Cards to show:</Label>
+                              <Input
+                                type="number"
+                                min="1"
+                                max="100"
+                                value={layout.defaultSections.seriesCardLimit || 14}
+                                onChange={(e) => {
+                                  const value = parseInt(e.target.value) || 14;
+                                  setLayout(prev => ({
+                                    ...prev,
+                                    defaultSections: {
+                                      ...prev.defaultSections,
+                                      seriesCardLimit: value
+                                    }
+                                  }));
+                                }}
+                                className="w-16 h-8 text-xs"
+                                data-testid="series-card-limit"
+                              />
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>

@@ -38,7 +38,7 @@ export default function Home() {
     return saved ? JSON.parse(saved) : {
       showHero: true,
       customSections: [],
-      defaultSections: { live: true, movies: true, series: true },
+      defaultSections: { live: true, movies: true, series: true, liveCardLimit: 14, moviesCardLimit: 14, seriesCardLimit: 14 },
       regionalProfiles: [],
       globalCategoryFilters: [],
       sectionOrder: ['live', 'movies', 'series']
@@ -408,7 +408,7 @@ export default function Home() {
               {homepageLayout.defaultSections.live && (
                 <ContentGrid
                   title="Live TV Channels"
-                  content={liveContent.slice(0, 14)}
+                  content={liveContent.slice(0, homepageLayout.defaultSections.liveCardLimit || 14)}
                   onContentClick={handlePlayContent}
                   isLoading={liveLoading}
                 />
@@ -416,7 +416,7 @@ export default function Home() {
               {homepageLayout.defaultSections.movies && (
                 <ContentGrid
                   title="Popular Movies"
-                  content={movieContent.slice(0, 14)}
+                  content={movieContent.slice(0, homepageLayout.defaultSections.moviesCardLimit || 14)}
                   onContentClick={handlePlayContent}
                   isLoading={vodLoading}
                 />
@@ -424,7 +424,7 @@ export default function Home() {
               {homepageLayout.defaultSections.series && (
                 <ContentGrid
                   title="TV Series"
-                  content={seriesContent.slice(0, 14)}
+                  content={seriesContent.slice(0, homepageLayout.defaultSections.seriesCardLimit || 14)}
                   onContentClick={handlePlayContent}
                   isLoading={seriesLoading}
                 />
