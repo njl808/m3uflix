@@ -89,8 +89,14 @@ export default function Home() {
   const handlePlayContent = (content: ContentItem) => {
     if (!api) return;
 
-    // Navigate to the separate player page
-    setLocation(`/player/${content.type}/${content.streamId}`);
+    // Navigate to detail pages for movies and series, direct to player for live streams
+    if (content.type === 'movie') {
+      setLocation(`/movie/${content.streamId}`);
+    } else if (content.type === 'series') {
+      setLocation(`/series/${content.streamId}`);
+    } else {
+      setLocation(`/player/${content.type}/${content.streamId}`);
+    }
   };
 
   const handleAddToList = (content: ContentItem) => {
