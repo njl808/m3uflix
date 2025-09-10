@@ -135,10 +135,12 @@ export default function Admin() {
   const [newProfileName, setNewProfileName] = useState('');
   const [editingProfile, setEditingProfile] = useState<RegionalProfile | null>(null);
 
-  // Save layout whenever it changes
+  // Save layout whenever it changes (but avoid infinite loops)
   useEffect(() => {
-    localStorage.setItem('iptv-homepage-layout', JSON.stringify(layout));
-  }, [layout]);
+    if (layout) {
+      localStorage.setItem('iptv-homepage-layout', JSON.stringify(layout));
+    }
+  }, [layout.showHero, layout.customSections, layout.defaultSections, layout.regionalProfiles, layout.activeProfile]);
 
   // Combine all content for totals
   const allContent: ContentItem[] = [
@@ -188,13 +190,13 @@ export default function Admin() {
       type: 'category',
       categoryIds: selectedCategories,
       visible: true,
-      order: layout.customSections.length,
+      order: (layout.customSections || []).length,
       limit: 20
     };
 
     setLayout(prev => ({
       ...prev,
-      customSections: [...prev.customSections, newSection]
+      customSections: [...(prev.customSections || []), newSection]
     }));
 
     setNewSectionName('');
@@ -202,7 +204,7 @@ export default function Admin() {
   };
 
   const createRegionalProfile = () => {
-    if (!newProfileName.trim()) return;
+    if (!newProfileName.trim() || !allCategories || allCategories.length === 0) return;
 
     const newProfile: RegionalProfile = {
       id: `profile-${Date.now()}`,
@@ -225,7 +227,7 @@ export default function Admin() {
 
     setLayout(prev => ({
       ...prev,
-      regionalProfiles: [...prev.regionalProfiles, newProfile]
+      regionalProfiles: [...(prev.regionalProfiles || []), newProfile]
     }));
 
     setNewProfileName('');
@@ -235,7 +237,7 @@ export default function Admin() {
     setLayout(prev => ({
       ...prev,
       activeProfile: profileId,
-      regionalProfiles: prev.regionalProfiles.map(profile => ({
+      regionalProfiles: (prev.regionalProfiles || []).map(profile => ({
         ...profile,
         active: profile.id === profileId
       }))
@@ -245,10 +247,10 @@ export default function Admin() {
   const toggleCategoryInProfile = (profileId: string, categoryId: string) => {
     setLayout(prev => ({
       ...prev,
-      regionalProfiles: prev.regionalProfiles.map(profile => 
+      regionalProfiles: (prev.regionalProfiles || []).map(profile => 
         profile.id === profileId ? {
           ...profile,
-          categoryFilters: profile.categoryFilters.map(filter =>
+          categoryFilters: (profile.categoryFilters || []).map(filter =>
             filter.categoryId === categoryId ? {
               ...filter,
               visible: !filter.visible
@@ -262,14 +264,14 @@ export default function Admin() {
   const deleteSection = (sectionId: string) => {
     setLayout(prev => ({
       ...prev,
-      customSections: prev.customSections.filter(s => s.id !== sectionId)
+      customSections: (prev.customSections || []).filter(s => s.id !== sectionId)
     }));
   };
 
   const updateSection = (sectionId: string, updates: Partial<CustomSection>) => {
     setLayout(prev => ({
       ...prev,
-      customSections: prev.customSections.map(section => 
+      customSections: (prev.customSections || []).map(section => 
         section.id === sectionId ? { ...section, ...updates } : section
       )
     }));
@@ -277,7 +279,7 @@ export default function Admin() {
 
   const moveSection = (sectionId: string, direction: 'up' | 'down') => {
     setLayout(prev => {
-      const sections = [...prev.customSections];
+      const sections = [...(prev.customSections || [])];
       const index = sections.findIndex(s => s.id === sectionId);
       if (index === -1) return prev;
 
@@ -316,7 +318,7 @@ export default function Admin() {
   const deleteProfile = (profileId: string) => {
     setLayout(prev => ({
       ...prev,
-      regionalProfiles: prev.regionalProfiles.filter(p => p.id !== profileId),
+      regionalProfiles: (prev.regionalProfiles || []).filter(p => p.id !== profileId),
       activeProfile: prev.activeProfile === profileId ? undefined : prev.activeProfile
     }));
   };
