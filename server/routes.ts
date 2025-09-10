@@ -353,7 +353,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const abortController = new AbortController();
       const timeoutId = setTimeout(() => {
         abortController.abort();
-      }, 30000); // 30 second timeout
+      }, 60000); // Increased to 60 second timeout for large files
 
       try {
         const streamResponse = await fetch(streamUrl, { 
@@ -421,12 +421,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
               while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
-                res.write(value);
+                
+                // Check if response is still writable before writing
+                if (!res.writableEnded && !res.destroyed) {
+                  res.write(value);
+                } else {
+                  console.log('[VIDEO PROXY] Client disconnected, stopping stream');
+                  break;
+                }
               }
-              res.end();
-            } catch (error) {
-              console.error('Stream error:', error);
-              res.end();
+              if (!res.writableEnded) {
+                res.end();
+              }
+            } catch (error: any) {
+              // Better error handling for connection drops
+              if (error.name === 'AbortError' || error.code === 'UND_ERR_SOCKET') {
+                console.log('[VIDEO PROXY] Connection closed by client or server');
+              } else {
+                console.error('Stream error:', error);
+              }
+              if (!res.writableEnded && !res.destroyed) {
+                res.end();
+              }
             }
           };
 

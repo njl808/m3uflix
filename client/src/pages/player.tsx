@@ -323,6 +323,7 @@ export default function Player() {
   // Load stream when component mounts or stream changes
   useEffect(() => {
     if (streamUrls.length > 0) {
+      console.log('[PLAYER] Starting stream load:', streamUrls[0]);
       // Generate new load token to cancel any existing attempts
       loadTokenRef.current = Date.now();
       loadStream(0);
