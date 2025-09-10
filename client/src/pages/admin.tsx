@@ -234,14 +234,20 @@ export default function Admin() {
   };
 
   const activateProfile = (profileId: string) => {
-    setLayout(prev => ({
-      ...prev,
-      activeProfile: profileId,
-      regionalProfiles: (prev.regionalProfiles || []).map(profile => ({
-        ...profile,
-        active: profile.id === profileId
-      }))
-    }));
+    console.log('activateProfile called with:', profileId);
+    setLayout(prev => {
+      console.log('Current layout before update:', prev);
+      const updated = {
+        ...prev,
+        activeProfile: profileId,
+        regionalProfiles: (prev.regionalProfiles || []).map(profile => ({
+          ...profile,
+          active: profile.id === profileId
+        }))
+      };
+      console.log('Updated layout:', updated);
+      return updated;
+    });
   };
 
   const toggleCategoryInProfile = (profileId: string, categoryId: string) => {
@@ -397,7 +403,11 @@ export default function Admin() {
                   </div>
                   <div className="flex items-end">
                     <Button
-                      onClick={createRegionalProfile}
+                      onClick={(e) => {
+                        console.log('Create profile button clicked');
+                        e.preventDefault();
+                        createRegionalProfile();
+                      }}
                       disabled={!newProfileName.trim()}
                       data-testid="button-create-profile"
                     >
@@ -424,7 +434,11 @@ export default function Admin() {
                             <Button
                               size="sm"
                               variant={profile.active ? "outline" : "default"}
-                              onClick={() => activateProfile(profile.id)}
+                              onClick={(e) => {
+                                console.log('Button clicked, profile:', profile.id);
+                                e.preventDefault();
+                                activateProfile(profile.id);
+                              }}
                               data-testid={`button-activate-${profile.id}`}
                             >
                               {profile.active ? "Deactivate" : "Activate"}
@@ -432,7 +446,11 @@ export default function Admin() {
                             <Button
                               size="sm"
                               variant="destructive"
-                              onClick={() => deleteProfile(profile.id)}
+                              onClick={(e) => {
+                                console.log('Delete button clicked, profile:', profile.id);
+                                e.preventDefault();
+                                deleteProfile(profile.id);
+                              }}
                               data-testid={`button-delete-profile-${profile.id}`}
                             >
                               <Trash2 className="w-4 h-4" />
