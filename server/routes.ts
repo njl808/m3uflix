@@ -300,6 +300,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`[VIDEO PROXY] Requesting: ${streamUrl}`);
 
+      // Add random delay to avoid CloudFlare rate limiting (1-3 seconds)
+      const delay = Math.random() * 2000 + 1000; // 1000-3000ms
+      await new Promise(resolve => setTimeout(resolve, delay));
+
       // Set appropriate headers for streaming
       const contentType = extension === 'ts' ? 'video/mp2t' : 
                           extension === 'm3u8' ? 'application/vnd.apple.mpegurl' : 
@@ -316,10 +320,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Forward the request to the actual stream with proper IPTV headers
+      // Anti-CloudFlare detection headers
+      const userAgents = [
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'VLC/3.0.12 LibVLC/3.0.12', 
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15',
+        'Kodi/20.2 (Windows NT 10.0.19045; WOW64) App_Bitness/32 Version/20.2-(20.2.0)',
+        'Perfect Player IPTV'
+      ];
+      
       const headers: Record<string, string> = {
-        'User-Agent': 'VLC/3.0.12 LibVLC/3.0.12',
+        'User-Agent': userAgents[Math.floor(Math.random() * userAgents.length)],
         'Accept': extension === 'm3u8' ? 'application/vnd.apple.mpegurl,*/*' : '*/*',
-        'Connection': 'keep-alive'
+        'Connection': 'keep-alive',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'cross-site'
       };
 
       // Add range header only for video files, not playlists
