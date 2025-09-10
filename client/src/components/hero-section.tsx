@@ -31,7 +31,7 @@ export function HeroSection({ featuredContent, onPlay, onAddToList }: HeroSectio
           <img 
             src={content.poster} 
             alt={content.title}
-            className="w-full h-full object-contain object-center bg-black/20"
+            className="w-full h-full object-cover"
             data-testid="hero-banner"
           />
         ) : (
@@ -73,24 +73,24 @@ export function HeroSection({ featuredContent, onPlay, onAddToList }: HeroSectio
               </div>
             </div>
 
-            {/* Main Info Card */}
-            <div className="bg-black/70 backdrop-blur-sm rounded-xl p-6 md:p-8 border border-white/20 shadow-2xl">
-              <div className="space-y-4">
+            {/* Main Info Card - 25% wider, reduced height */}
+            <div className="lg:col-span-1 w-full lg:w-[125%] bg-black/70 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-white/20 shadow-2xl">
+              <div className="space-y-3">
                 <div>
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="capitalize bg-primary text-primary-foreground px-3 py-1 rounded-full text-sm font-medium">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="capitalize bg-primary text-primary-foreground px-2 py-1 rounded-full text-xs font-medium">
                       {content.type === 'live' ? 'Live TV' : content.type === 'movie' ? 'Movie' : 'TV Series'}
                     </span>
                     {content.categoryId && content.categoryId !== '0' && (
-                      <span className="text-white/60 text-sm">Category {content.categoryId}</span>
+                      <span className="text-white/60 text-xs">Category {content.categoryId}</span>
                     )}
                   </div>
-                  <h1 className="text-2xl md:text-4xl font-bold text-white mb-3" data-testid="hero-title">
+                  <h1 className="text-xl md:text-3xl font-bold text-white mb-2" data-testid="hero-title">
                     {content.title}
                   </h1>
                   
                   {/* Additional Info Row */}
-                  <div className="flex items-center gap-4 text-sm text-white/60 mb-3">
+                  <div className="flex items-center gap-3 text-xs text-white/60 mb-2">
                     {content.year && (
                       <span className="flex items-center gap-1">
                         📅 {content.year}
@@ -114,33 +114,16 @@ export function HeroSection({ featuredContent, onPlay, onAddToList }: HeroSectio
 
                 {/* Movie/Series Summary */}
                 {content.description && (
-                  <div className="bg-white/10 rounded-lg p-4 border border-white/20">
-                    <h3 className="text-sm font-semibold text-white/90 mb-2">Plot Summary</h3>
-                    <p className="text-sm md:text-base text-white/80 leading-relaxed line-clamp-4" data-testid="hero-description">
+                  <div className="bg-white/10 rounded-lg p-3 border border-white/20">
+                    <h3 className="text-xs font-semibold text-white/90 mb-1">Plot Summary</h3>
+                    <p className="text-xs md:text-sm text-white/80 leading-relaxed line-clamp-3" data-testid="hero-description">
                       {content.description}
                     </p>
                   </div>
                 )}
 
-                {/* Quick Info */}
-                <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                  <div className="flex flex-wrap gap-4 text-xs text-white/60">
-                    <div>
-                      <span className="font-medium text-white/80">Stream:</span> {content.streamId}
-                    </div>
-                    <div>
-                      <span className="font-medium text-white/80">Category:</span> {content.categoryId}
-                    </div>
-                    {content.rating && (
-                      <div>
-                        <span className="font-medium text-white/80">Rating:</span> {content.rating}/10
-                      </div>
-                    )}
-                  </div>
-                </div>
-
                 {featuredContent && (
-                  <div className="pt-2 border-t border-white/20">
+                  <div className="pt-1 border-t border-white/20">
                     <p className="text-xs text-white/60">
                       Featured content • Currently cycling through selected categories
                     </p>
