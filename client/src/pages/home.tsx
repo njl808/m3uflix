@@ -82,7 +82,7 @@ export default function Home() {
         variant: "destructive",
       });
     }
-  }, [authError, toast]);
+  }, [authError]);
 
   const handlePlayContent = (content: ContentItem) => {
     if (!api) return;

@@ -5,13 +5,19 @@ import { XtreamEPG } from "@/types/xtream";
 interface EPGModalProps {
   isOpen: boolean;
   onClose: () => void;
-  epgData: XtreamEPG[];
+  epgData: XtreamEPG[] | { epg_listings: XtreamEPG[] } | null;
   channelName: string;
   onWatch: (programId: string) => void;
   isLoading?: boolean;
 }
 
 export function EPGModal({ isOpen, onClose, epgData, channelName, onWatch, isLoading }: EPGModalProps) {
+  // Handle different EPG data formats
+  const programs = Array.isArray(epgData) 
+    ? epgData 
+    : epgData && typeof epgData === 'object' && 'epg_listings' in epgData 
+      ? epgData.epg_listings || []
+      : [];
   const formatTime = (timestamp: number) => {
     return new Date(timestamp * 1000).toLocaleTimeString([], { 
       hour: '2-digit', 
@@ -44,13 +50,13 @@ export function EPGModal({ isOpen, onClose, epgData, channelName, onWatch, isLoa
                 </div>
               ))}
             </div>
-          ) : !Array.isArray(epgData) || epgData.length === 0 ? (
+          ) : programs.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No program guide available for this channel</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {epgData.map((program) => {
+              {programs.map((program) => {
                 const isCurrentlyPlaying = program.now_playing === 1;
                 
                 return (
