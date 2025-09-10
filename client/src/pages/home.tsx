@@ -35,9 +35,42 @@ export default function Home() {
       showHero: true,
       customSections: [],
       defaultSections: { live: true, movies: true, series: true },
+      regionalProfiles: [],
+      globalCategoryFilters: [],
       sectionOrder: ['live', 'movies', 'series']
     };
   });
+
+  // Apply regional filtering to content
+  const getFilteredContent = (content: ContentItem[]) => {
+    const activeProfile = homepageLayout.regionalProfiles?.find((p: any) => p.active);
+    if (!activeProfile) return content;
+
+    return content.filter(item => {
+      // Check keyword filters
+      const titleLower = item.title.toLowerCase();
+      
+      // Must include at least one include keyword (if any)
+      if (activeProfile.keywordFilters.include.length > 0) {
+        const hasIncludeKeyword = activeProfile.keywordFilters.include.some((keyword: string) => 
+          titleLower.includes(keyword.toLowerCase())
+        );
+        if (!hasIncludeKeyword) return false;
+      }
+      
+      // Must not include any exclude keywords
+      const hasExcludeKeyword = activeProfile.keywordFilters.exclude.some((keyword: string) => 
+        titleLower.includes(keyword.toLowerCase())
+      );
+      if (hasExcludeKeyword) return false;
+      
+      // Check category filters
+      const categoryFilter = activeProfile.categoryFilters.find((f: any) => f.categoryId === item.categoryId);
+      if (categoryFilter && !categoryFilter.visible) return false;
+      
+      return true;
+    });
+  };
 
   // API Queries
   const { data: authData, isError: authError } = useAuthentication(api);
@@ -50,18 +83,20 @@ export default function Home() {
   const { data: epgData, isLoading: epgLoading } = useEPG(api, selectedStreamId);
 
   // Process content for display - memoized to prevent unnecessary re-renders
-  const liveContent: ContentItem[] = useMemo(() => 
-    (liveStreams || []).map((stream: XtreamStream) => ({
+  const liveContent: ContentItem[] = useMemo(() => {
+    const content = (liveStreams || []).map((stream: XtreamStream) => ({
       id: `live-${stream.stream_id}`,
       title: stream.name,
       type: 'live' as const,
       poster: stream.stream_icon,
       streamId: stream.stream_id,
       categoryId: stream.category_id,
-    })), [liveStreams]);
+    }));
+    return getFilteredContent(content);
+  }, [liveStreams, homepageLayout]);
 
-  const movieContent: ContentItem[] = useMemo(() => 
-    (vodStreams || []).map((vod: XtreamVOD) => ({
+  const movieContent: ContentItem[] = useMemo(() => {
+    const content = (vodStreams || []).map((vod: XtreamVOD) => ({
       id: `movie-${vod.stream_id}`,
       title: vod.name,
       type: 'movie' as const,
@@ -69,10 +104,12 @@ export default function Home() {
       rating: vod.rating_5based,
       streamId: vod.stream_id,
       categoryId: vod.category_id,
-    })), [vodStreams]);
+    }));
+    return getFilteredContent(content);
+  }, [vodStreams, homepageLayout]);
 
-  const seriesContent: ContentItem[] = useMemo(() => 
-    (seriesData || []).map((series: XtreamSeries) => ({
+  const seriesContent: ContentItem[] = useMemo(() => {
+    const content = (seriesData || []).map((series: XtreamSeries) => ({
       id: `series-${series.series_id}`,
       title: series.name,
       type: 'series' as const,
@@ -82,7 +119,9 @@ export default function Home() {
       year: series.releaseDate,
       streamId: series.series_id,
       categoryId: series.category_id,
-    })), [seriesData]);
+    }));
+    return getFilteredContent(content);
+  }, [seriesData, homepageLayout]);
 
   const allContent = useMemo(() => [...liveContent, ...movieContent, ...seriesContent], [liveContent, movieContent, seriesContent]);
   const searchResults = useSearch(filteredContent.length > 0 ? filteredContent : allContent, searchQuery);
@@ -273,15 +312,15 @@ export default function Home() {
             <>
               {/* Custom Sections */}
               {homepageLayout.customSections
-                .filter(section => section.visible)
-                .sort((a, b) => a.order - b.order)
-                .map(section => (
+                .filter((section: any) => section.visible)
+                .sort((a: any, b: any) => a.order - b.order)
+                .map((section: any) => (
                   <ContentGrid
                     key={section.id}
                     title={section.title}
-                    content={section.contentIds
-                      .map(contentId => allContent.find(item => item.id === contentId))
-                      .filter(Boolean)
+                    content={section.categoryIds
+                      .map((categoryId: string) => allContent.filter(item => item.categoryId === categoryId))
+                      .flat()
                       .slice(0, section.limit || 20)
                     }
                     onContentClick={handlePlayContent}
