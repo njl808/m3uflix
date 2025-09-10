@@ -13,8 +13,9 @@ export default function Player() {
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const loadTokenRef = useRef<number>(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(true); // Start muted for better autoplay
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [showControls, setShowControls] = useState(true);
@@ -23,33 +24,24 @@ export default function Player() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentFormat, setCurrentFormat] = useState<string>('');
   const [retryCount, setRetryCount] = useState(0);
+  const [showUnmuteHint, setShowUnmuteHint] = useState(false);
 
   const streamType = params?.type as 'live' | 'movie' | 'series';
   const streamId = params?.streamId ? parseInt(params.streamId) : null;
 
   // Generate multiple stream URLs for fallback
-  const getStreamUrls = (streamId: number, streamType: string) => {
+  const getStreamUrls = (streamId: number, streamType: 'live' | 'movie' | 'series') => {
     if (!api) return [];
     
     const baseUrl = api.buildStreamUrl(streamId, streamType);
     const urls = [];
     
     if (streamType === 'live') {
-      // For live streams, try multiple formats
+      // For live streams, only try HLS formats (TS/MP4 rarely work for live)
       urls.push({
         url: baseUrl.replace('.ts', '.m3u8'),
         format: 'HLS',
         description: 'HLS Stream (recommended)'
-      });
-      urls.push({
-        url: baseUrl,
-        format: 'TS',
-        description: 'Transport Stream'
-      });
-      urls.push({
-        url: baseUrl.replace('.ts', '.mp4'),
-        format: 'MP4',
-        description: 'MP4 Stream'
       });
     } else {
       // For VOD, try different extensions
@@ -136,8 +128,15 @@ export default function Player() {
 
   // Enhanced stream loading with HLS.js and fallback
   const loadStream = async (urlIndex = 0) => {
+    // Generate unique load token to prevent race conditions
+    const currentToken = ++loadTokenRef.current;
+    
     if (!streamUrls.length || !videoRef.current || urlIndex >= streamUrls.length) {
-      setError('No compatible stream formats available');
+      if (streamType === 'live') {
+        setError('Live stream formats not available. Try external player below.');
+      } else {
+        setError('No compatible stream formats available');
+      }
       setIsLoading(false);
       return;
     }
@@ -150,13 +149,19 @@ export default function Player() {
     setIsLoading(true);
     setError(null);
 
-    // Clean up previous HLS instance
-    if (hlsRef.current) {
+    // Clean up previous HLS instance only if this is the current load
+    if (hlsRef.current && currentToken === loadTokenRef.current) {
       hlsRef.current.destroy();
       hlsRef.current = null;
     }
 
     try {
+      // Check if this load attempt is still current
+      if (currentToken !== loadTokenRef.current) {
+        console.log('Load cancelled, newer attempt in progress');
+        return;
+      }
+
       // Check if it's an HLS stream and HLS.js is supported
       if ((url.includes('.m3u8') || format === 'HLS') && Hls.isSupported()) {
         console.log('Using HLS.js for playback');
@@ -171,26 +176,44 @@ export default function Player() {
           debug: false,
         });
 
-        hls.loadSource(url);
+        // Proper HLS.js initialization order: attachMedia first, then loadSource
         hls.attachMedia(videoRef.current);
         hlsRef.current = hls;
 
+        hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+          if (currentToken === loadTokenRef.current) {
+            hls.loadSource(url);
+          }
+        });
+
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          console.log('HLS manifest loaded successfully');
-          setIsLoading(false);
-          videoRef.current?.play().catch((err) => {
-            console.error('HLS autoplay failed:', err);
-            setError('Click play to start the video');
-          });
+          if (currentToken === loadTokenRef.current) {
+            console.log('HLS manifest loaded successfully');
+            setIsLoading(false);
+            // Set video as muted initially for better autoplay success
+            if (videoRef.current) {
+              videoRef.current.muted = true;
+              setIsMuted(true);
+            }
+            videoRef.current?.play().then(() => {
+              setShowUnmuteHint(true);
+              setTimeout(() => setShowUnmuteHint(false), 5000);
+            }).catch((err) => {
+              console.error('HLS autoplay failed:', err);
+              setError('Click play to start the video');
+            });
+          }
         });
 
         hls.on(Hls.Events.ERROR, (event, data) => {
           console.error('HLS error:', data);
-          if (data.fatal) {
+          if (data.fatal && currentToken === loadTokenRef.current) {
             setIsLoading(false);
             if (urlIndex < streamUrls.length - 1) {
               console.log('HLS failed, trying next format...');
               setTimeout(() => loadStream(urlIndex + 1), 1000);
+            } else if (streamType === 'live') {
+              setError('Live stream failed. Please try external player below.');
             } else {
               setError(`HLS Error: ${data.details || 'Stream failed to load'}`);
             }
@@ -200,48 +223,68 @@ export default function Player() {
       } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl') && url.includes('.m3u8')) {
         // Native HLS support (Safari)
         console.log('Using native HLS playback');
-        videoRef.current.src = url;
-        videoRef.current.load();
-        setIsLoading(false);
-        
-        setTimeout(() => {
-          videoRef.current?.play().catch((err) => {
-            console.error('Native HLS autoplay failed:', err);
-            if (urlIndex < streamUrls.length - 1) {
-              loadStream(urlIndex + 1);
-            } else {
-              setError('Click play to start the video');
+        if (currentToken === loadTokenRef.current) {
+          videoRef.current.src = url;
+          videoRef.current.muted = true;
+          setIsMuted(true);
+          videoRef.current.load();
+          setIsLoading(false);
+          
+          setTimeout(() => {
+            if (currentToken === loadTokenRef.current) {
+              videoRef.current?.play().then(() => {
+                setShowUnmuteHint(true);
+                setTimeout(() => setShowUnmuteHint(false), 5000);
+              }).catch((err) => {
+                console.error('Native HLS autoplay failed:', err);
+                if (urlIndex < streamUrls.length - 1) {
+                  loadStream(urlIndex + 1);
+                } else {
+                  setError('Click play to start the video');
+                }
+              });
             }
-          });
-        }, 1000);
+          }, 1000);
+        }
 
       } else {
         // Direct HTML5 video playback
         console.log('Using direct HTML5 playback');
-        videoRef.current.src = url;
-        videoRef.current.load();
-        setIsLoading(false);
-        
-        setTimeout(() => {
-          videoRef.current?.play().catch((err) => {
-            console.error('Direct playback failed:', err);
-            if (urlIndex < streamUrls.length - 1) {
-              console.log('Direct playback failed, trying next format...');
-              setTimeout(() => loadStream(urlIndex + 1), 1000);
-            } else {
-              setError('Unable to play this stream with any available format');
+        if (currentToken === loadTokenRef.current) {
+          videoRef.current.src = url;
+          videoRef.current.muted = true;
+          setIsMuted(true);
+          videoRef.current.load();
+          setIsLoading(false);
+          
+          setTimeout(() => {
+            if (currentToken === loadTokenRef.current) {
+              videoRef.current?.play().then(() => {
+                setShowUnmuteHint(true);
+                setTimeout(() => setShowUnmuteHint(false), 5000);
+              }).catch((err) => {
+                console.error('Direct playback failed:', err);
+                if (urlIndex < streamUrls.length - 1) {
+                  console.log('Direct playback failed, trying next format...');
+                  setTimeout(() => loadStream(urlIndex + 1), 1000);
+                } else {
+                  setError('Unable to play this stream with any available format');
+                }
+              });
             }
-          });
-        }, 1000);
+          }, 1000);
+        }
       }
 
     } catch (err) {
       console.error('Stream loading error:', err);
-      setIsLoading(false);
-      if (urlIndex < streamUrls.length - 1) {
-        setTimeout(() => loadStream(urlIndex + 1), 1000);
-      } else {
-        setError('Failed to load stream with any available format');
+      if (currentToken === loadTokenRef.current) {
+        setIsLoading(false);
+        if (urlIndex < streamUrls.length - 1) {
+          setTimeout(() => loadStream(urlIndex + 1), 1000);
+        } else {
+          setError('Failed to load stream with any available format');
+        }
       }
     }
   };
@@ -279,6 +322,7 @@ export default function Player() {
     if (!videoRef.current) return;
     videoRef.current.muted = !isMuted;
     setIsMuted(!isMuted);
+    setShowUnmuteHint(false);
   };
 
   const toggleFullscreen = () => {
@@ -333,6 +377,10 @@ export default function Player() {
   };
 
   const formatTime = (time: number) => {
+    // Handle live streams and invalid time values
+    if (!isFinite(time) || isNaN(time)) {
+      return streamType === 'live' ? 'LIVE' : '00:00';
+    }
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
@@ -461,7 +509,11 @@ export default function Player() {
 
               {/* Time Display */}
               <div className="text-white text-sm">
-                {formatTime(currentTime)} / {formatTime(duration)}
+                {streamType === 'live' ? (
+                  <span className="bg-red-600 px-2 py-1 rounded text-xs font-bold">● LIVE</span>
+                ) : (
+                  `${formatTime(currentTime)} / ${formatTime(duration)}`
+                )}
               </div>
 
               <div className="flex-1" />
@@ -486,6 +538,16 @@ export default function Player() {
                 <Maximize className="w-5 h-5" />
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unmute Hint */}
+      {showUnmuteHint && isPlaying && isMuted && (
+        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-black/80 text-white px-4 py-2 rounded-lg z-30">
+          <div className="flex items-center gap-2">
+            <VolumeX className="w-4 h-4" />
+            <span className="text-sm">Tap unmute for audio</span>
           </div>
         </div>
       )}
