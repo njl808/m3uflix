@@ -170,6 +170,16 @@ export default function Player() {
           maxMaxBufferLength: 600,
           startLevel: -1,
           debug: false,
+          // Increased timeouts and retries for live streaming stability
+          fragLoadingTimeOut: streamType === 'live' ? 15000 : 10000,
+          levelLoadingTimeOut: streamType === 'live' ? 15000 : 10000,
+          manifestLoadingTimeOut: streamType === 'live' ? 15000 : 10000,
+          fragLoadingMaxRetry: streamType === 'live' ? 4 : 3,
+          levelLoadingMaxRetry: streamType === 'live' ? 4 : 3,
+          manifestLoadingMaxRetry: streamType === 'live' ? 4 : 3,
+          fragLoadingRetryDelay: 1000,
+          levelLoadingRetryDelay: 1000,
+          manifestLoadingRetryDelay: 1000,
         });
 
         // Proper HLS.js initialization order: attachMedia first, then loadSource

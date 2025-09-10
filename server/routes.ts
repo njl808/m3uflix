@@ -301,12 +301,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[VIDEO PROXY] Requesting: ${streamUrl.replace(password, '***')}`);
 
       // Add random delay to avoid CloudFlare rate limiting
-      // Reduced delay for TS segments (live streaming)
+      // Minimal delay for live streaming to reduce latency pressure
       if (extension === 'ts') {
-        const delay = Math.random() * 500 + 200; // 200-700ms for TS segments
+        const delay = Math.random() * 100 + 50; // 50-150ms for TS segments (reduced for live)
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else if (extension === 'm3u8') {
+        const delay = Math.random() * 300 + 100; // 100-400ms for playlists
         await new Promise(resolve => setTimeout(resolve, delay));
       } else {
-        const delay = Math.random() * 2000 + 1000; // 1000-3000ms for other files
+        const delay = Math.random() * 2000 + 1000; // 1000-3000ms for VOD files
         await new Promise(resolve => setTimeout(resolve, delay));
       }
 
@@ -349,11 +352,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         headers['Referer'] = req.headers.referer;
       }
 
+      // Disable Express request/response timeouts for streaming
+      req.setTimeout(0);
+      res.setTimeout(0);
+      
       // Add timeout control using AbortController
       const abortController = new AbortController();
-      // Shorter timeout for live TS segments to prevent buffering issues
-      const timeout = extension === 'ts' ? 15000 : 60000; // 15s for TS, 60s for others
+      // Increased timeouts for live streaming stability
+      const timeout = extension === 'ts' ? 30000 : extension === 'm3u8' ? 15000 : 60000; // 30s for TS, 15s for m3u8, 60s for others
+      console.log(`[VIDEO PROXY] Using timeout: ${timeout}ms for .${extension} file`);
       const timeoutId = setTimeout(() => {
+        console.log(`[VIDEO PROXY] Request timed out after ${timeout}ms for .${extension}`);
         abortController.abort();
       }, timeout);
 
