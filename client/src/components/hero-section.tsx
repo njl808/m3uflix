@@ -21,90 +21,96 @@ export function HeroSection({ featuredContent, onPlay, onAddToList }: HeroSectio
   const content = featuredContent || defaultContent;
 
   return (
-    <section className="bg-background/50 py-8 px-4 sm:px-6 lg:px-8" data-testid="hero-section">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row gap-8 items-start">
-          {/* Box Cover / Poster */}
-          <div className="flex-shrink-0">
-            <div className="relative group">
-              {content.poster ? (
-                <img 
-                  src={content.poster} 
-                  alt={content.title}
-                  className="w-64 h-96 md:w-72 md:h-[432px] object-cover rounded-xl shadow-2xl border border-border/50"
-                  data-testid="hero-poster"
-                />
-              ) : (
-                <div className="w-64 h-96 md:w-72 md:h-[432px] bg-muted rounded-xl shadow-2xl border border-border/50 flex items-center justify-center">
-                  <div className="text-center text-muted-foreground">
-                    <div className="text-4xl mb-2">📺</div>
-                    <div className="text-sm">No Image</div>
-                  </div>
-                </div>
-              )}
-              <div className="absolute inset-0 bg-black/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+    <section 
+      className="relative min-h-[70vh] flex items-end overflow-hidden"
+      data-testid="hero-section"
+    >
+      {/* Background Banner */}
+      <div className="absolute inset-0 z-0">
+        {content.poster ? (
+          <img 
+            src={content.poster} 
+            alt={content.title}
+            className="w-full h-full object-cover"
+            data-testid="hero-banner"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-muted flex items-center justify-center">
+            <div className="text-center text-muted-foreground">
+              <div className="text-6xl mb-4">📺</div>
+              <div className="text-lg">IPTV Player</div>
             </div>
           </div>
+        )}
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent"></div>
+      </div>
 
-          {/* Content Info */}
-          <div className="flex-1 min-w-0 pt-4">
-            <div className="space-y-6">
-              <div>
-                <h1 className="text-3xl md:text-5xl font-bold text-foreground mb-3" data-testid="hero-title">
-                  {content.title}
-                </h1>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                  <span className="capitalize bg-primary/10 text-primary px-2 py-1 rounded text-xs font-medium">
-                    {content.type === 'live' ? 'Live TV' : content.type === 'movie' ? 'Movie' : 'TV Series'}
-                  </span>
-                  {content.categoryId && content.categoryId !== '0' && (
-                    <span className="text-muted-foreground">Category {content.categoryId}</span>
-                  )}
-                </div>
-              </div>
-
-              {content.description && (
+      {/* Content Cards */}
+      <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8 pb-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-end">
+            {/* Main Info Card */}
+            <div className="bg-black/70 backdrop-blur-sm rounded-xl p-6 md:p-8 border border-white/20 shadow-2xl">
+              <div className="space-y-4">
                 <div>
-                  <p className="text-base md:text-lg text-muted-foreground leading-relaxed" data-testid="hero-description">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="capitalize bg-primary text-primary-foreground px-3 py-1 rounded-full text-sm font-medium">
+                      {content.type === 'live' ? 'Live TV' : content.type === 'movie' ? 'Movie' : 'TV Series'}
+                    </span>
+                    {content.categoryId && content.categoryId !== '0' && (
+                      <span className="text-white/60 text-sm">Category {content.categoryId}</span>
+                    )}
+                  </div>
+                  <h1 className="text-2xl md:text-4xl font-bold text-white mb-3" data-testid="hero-title">
+                    {content.title}
+                  </h1>
+                </div>
+
+                {content.description && (
+                  <p className="text-sm md:text-base text-white/80 leading-relaxed line-clamp-3" data-testid="hero-description">
                     {content.description}
                   </p>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-3">
-                {featuredContent && (
-                  <Button 
-                    className="bg-primary text-primary-foreground px-8 py-3 text-base font-semibold hover:bg-primary/90 shadow-lg"
-                    onClick={() => onPlay(content)}
-                    data-testid="button-play"
-                  >
-                    <Play className="w-5 h-5 mr-2" />
-                    Play Now
-                  </Button>
                 )}
+
                 {featuredContent && (
-                  <Button 
-                    variant="outline"
-                    className="px-8 py-3 text-base font-semibold border-2 hover:bg-muted/50"
-                    onClick={() => onAddToList(content)}
-                    data-testid="button-add-list"
-                  >
-                    <Plus className="w-5 h-5 mr-2" />
-                    Add to My List
-                  </Button>
+                  <div className="pt-2 border-t border-white/20">
+                    <p className="text-xs text-white/60">
+                      Featured content • Currently cycling through selected categories
+                    </p>
+                  </div>
                 )}
               </div>
-
-              {/* Additional Info */}
-              {featuredContent && (
-                <div className="pt-4 border-t border-border/50">
-                  <p className="text-sm text-muted-foreground">
-                    Featured content • Currently cycling through selected categories
-                  </p>
-                </div>
-              )}
             </div>
+
+            {/* Action Card */}
+            {featuredContent && (
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 shadow-2xl">
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold text-white mb-4">Quick Actions</h2>
+                  <div className="space-y-3">
+                    <Button 
+                      className="w-full bg-primary text-primary-foreground px-6 py-3 text-base font-semibold hover:bg-primary/90 shadow-lg"
+                      onClick={() => onPlay(content)}
+                      data-testid="button-play"
+                    >
+                      <Play className="w-5 h-5 mr-2" />
+                      Play Now
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className="w-full px-6 py-3 text-base font-semibold border-white/30 text-white hover:bg-white/10 hover:border-white/50"
+                      onClick={() => onAddToList(content)}
+                      data-testid="button-add-list"
+                    >
+                      <Plus className="w-5 h-5 mr-2" />
+                      Add to My List
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
