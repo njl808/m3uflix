@@ -31,7 +31,7 @@ export function HeroSection({ featuredContent, onPlay, onAddToList }: HeroSectio
           <img 
             src={content.poster} 
             alt={content.title}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain object-center bg-black/20"
             data-testid="hero-banner"
           />
         ) : (
@@ -112,22 +112,21 @@ export function HeroSection({ featuredContent, onPlay, onAddToList }: HeroSectio
                   </div>
                 </div>
 
+                {/* Movie/Series Summary */}
                 {content.description && (
-                  <div>
-                    <p className="text-sm md:text-base text-white/80 leading-relaxed line-clamp-3" data-testid="hero-description">
+                  <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+                    <h3 className="text-sm font-semibold text-white/90 mb-2">Plot Summary</h3>
+                    <p className="text-sm md:text-base text-white/80 leading-relaxed line-clamp-4" data-testid="hero-description">
                       {content.description}
                     </p>
                   </div>
                 )}
 
-                {/* Technical Details */}
+                {/* Quick Info */}
                 <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                  <div className="grid grid-cols-2 gap-2 text-xs text-white/60">
+                  <div className="flex flex-wrap gap-4 text-xs text-white/60">
                     <div>
-                      <span className="font-medium text-white/80">Type:</span> {content.type.toUpperCase()}
-                    </div>
-                    <div>
-                      <span className="font-medium text-white/80">Stream ID:</span> {content.streamId}
+                      <span className="font-medium text-white/80">Stream:</span> {content.streamId}
                     </div>
                     <div>
                       <span className="font-medium text-white/80">Category:</span> {content.categoryId}
