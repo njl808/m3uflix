@@ -135,12 +135,10 @@ export default function Admin() {
   const [newProfileName, setNewProfileName] = useState('');
   const [editingProfile, setEditingProfile] = useState<RegionalProfile | null>(null);
 
-  // Save layout whenever it changes (but avoid infinite loops)
+  // Save layout whenever it changes
   useEffect(() => {
-    if (layout) {
-      localStorage.setItem('iptv-homepage-layout', JSON.stringify(layout));
-    }
-  }, [layout.showHero, layout.customSections, layout.defaultSections, layout.regionalProfiles, layout.activeProfile]);
+    localStorage.setItem('iptv-homepage-layout', JSON.stringify(layout));
+  }, [layout]);
 
   // Combine all content for totals
   const allContent: ContentItem[] = [
@@ -234,13 +232,11 @@ export default function Admin() {
   };
 
   const activateProfile = (profileId: string) => {
-    console.log('activateProfile called with:', profileId);
     setLayout(prev => {
-      console.log('Current layout before update:', prev);
       const currentProfile = prev.regionalProfiles?.find(p => p.id === profileId);
       const isCurrentlyActive = currentProfile?.active;
       
-      const updated = {
+      return {
         ...prev,
         activeProfile: isCurrentlyActive ? undefined : profileId,
         regionalProfiles: (prev.regionalProfiles || []).map(profile => ({
@@ -248,8 +244,6 @@ export default function Admin() {
           active: isCurrentlyActive ? false : profile.id === profileId
         }))
       };
-      console.log('Updated layout:', updated);
-      return updated;
     });
   };
 
@@ -333,7 +327,6 @@ export default function Admin() {
   };
 
   const toggleGlobalCategory = (categoryId: string, type: 'live' | 'movie' | 'series') => {
-    console.log('toggleGlobalCategory called:', categoryId, type);
     setLayout(prev => {
       const currentFilters = prev.globalCategoryFilters || [];
       const existingFilter = currentFilters.find(f => f.categoryId === categoryId);
@@ -439,11 +432,7 @@ export default function Admin() {
                   </div>
                   <div className="flex items-end">
                     <Button
-                      onClick={(e) => {
-                        console.log('Create profile button clicked');
-                        e.preventDefault();
-                        createRegionalProfile();
-                      }}
+                      onClick={createRegionalProfile}
                       disabled={!newProfileName.trim()}
                       data-testid="button-create-profile"
                     >
@@ -470,11 +459,7 @@ export default function Admin() {
                             <Button
                               size="sm"
                               variant={profile.active ? "outline" : "default"}
-                              onClick={(e) => {
-                                console.log('Button clicked, profile:', profile.id);
-                                e.preventDefault();
-                                activateProfile(profile.id);
-                              }}
+                              onClick={() => activateProfile(profile.id)}
                               data-testid={`button-activate-${profile.id}`}
                             >
                               {profile.active ? "Deactivate" : "Activate"}
@@ -482,11 +467,7 @@ export default function Admin() {
                             <Button
                               size="sm"
                               variant="destructive"
-                              onClick={(e) => {
-                                console.log('Delete button clicked, profile:', profile.id);
-                                e.preventDefault();
-                                deleteProfile(profile.id);
-                              }}
+                              onClick={() => deleteProfile(profile.id)}
                               data-testid={`button-delete-profile-${profile.id}`}
                             >
                               <Trash2 className="w-4 h-4" />
@@ -553,10 +534,7 @@ export default function Admin() {
                           <span className="text-sm">{category.category_name}</span>
                           <Switch
                             checked={layout.globalCategoryFilters?.find(f => f.categoryId === category.category_id)?.visible ?? true}
-                            onCheckedChange={(checked) => {
-                              console.log('Toggle live category:', category.category_id, checked);
-                              toggleGlobalCategory(category.category_id, 'live');
-                            }}
+                            onCheckedChange={() => toggleGlobalCategory(category.category_id, 'live')}
                             data-testid={`toggle-live-${category.category_id}`}
                           />
                         </div>
@@ -575,10 +553,7 @@ export default function Admin() {
                           <span className="text-sm">{category.category_name}</span>
                           <Switch
                             checked={layout.globalCategoryFilters?.find(f => f.categoryId === category.category_id)?.visible ?? true}
-                            onCheckedChange={(checked) => {
-                              console.log('Toggle movie category:', category.category_id, checked);
-                              toggleGlobalCategory(category.category_id, 'movie');
-                            }}
+                            onCheckedChange={() => toggleGlobalCategory(category.category_id, 'movie')}
                             data-testid={`toggle-movie-${category.category_id}`}
                           />
                         </div>
@@ -597,10 +572,7 @@ export default function Admin() {
                           <span className="text-sm">{category.category_name}</span>
                           <Switch
                             checked={layout.globalCategoryFilters?.find(f => f.categoryId === category.category_id)?.visible ?? true}
-                            onCheckedChange={(checked) => {
-                              console.log('Toggle series category:', category.category_id, checked);
-                              toggleGlobalCategory(category.category_id, 'series');
-                            }}
+                            onCheckedChange={() => toggleGlobalCategory(category.category_id, 'series')}
                             data-testid={`toggle-series-${category.category_id}`}
                           />
                         </div>

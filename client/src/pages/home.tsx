@@ -41,12 +41,25 @@ export default function Home() {
     };
   });
 
-  // Apply regional filtering to content
-  const getFilteredContent = (content: ContentItem[]) => {
-    const activeProfile = homepageLayout.regionalProfiles?.find((p: any) => p.active);
-    if (!activeProfile) return content;
+  // Sync layout changes when navigating back from admin panel
+  useEffect(() => {
+    const saved = localStorage.getItem('iptv-homepage-layout');
+    if (saved) {
+      setHomepageLayout(JSON.parse(saved));
+    }
+  }, [location]);
 
+  // Apply regional and global filtering to content
+  const getFilteredContent = (content: ContentItem[]) => {
     return content.filter(item => {
+      // First check global category filters - these override everything
+      const globalFilter = homepageLayout.globalCategoryFilters?.find((f: any) => f.categoryId === item.categoryId);
+      if (globalFilter && !globalFilter.visible) return false;
+      
+      // Then apply regional profile filters if active
+      const activeProfile = homepageLayout.regionalProfiles?.find((p: any) => p.active);
+      if (!activeProfile) return true;
+
       // Check keyword filters
       const titleLower = item.title.toLowerCase();
       
@@ -64,7 +77,7 @@ export default function Home() {
       );
       if (hasExcludeKeyword) return false;
       
-      // Check category filters
+      // Check profile-specific category filters
       const categoryFilter = activeProfile.categoryFilters.find((f: any) => f.categoryId === item.categoryId);
       if (categoryFilter && !categoryFilter.visible) return false;
       
