@@ -734,41 +734,57 @@ export default function Admin() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label>Choose from Movies</Label>
-                          <select
-                            className="w-full p-2 border rounded text-sm"
+                          <Select
                             value={layout.heroContentId?.startsWith('movie-') ? layout.heroContentId : ''}
-                            onChange={(e) => setLayout(prev => ({ 
+                            onValueChange={(value) => setLayout(prev => ({ 
                               ...prev, 
-                              heroContentId: e.target.value || undefined 
+                              heroContentId: value || undefined 
                             }))}
-                            data-testid="select-hero-movie"
                           >
-                            <option value="">Select a movie... ({(vodStreams || []).length} available)</option>
-                            {(vodStreams || []).map(movie => (
-                              <option key={movie.stream_id} value={`movie-${movie.stream_id}`}>
-                                {movie.name}
-                              </option>
-                            ))}
-                          </select>
+                            <SelectTrigger data-testid="select-hero-movie">
+                              <SelectValue placeholder={`Select a movie... (${(vodStreams || []).length} available)`} />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-64">
+                              <SelectItem value="">None selected</SelectItem>
+                              {(vodStreams || []).slice(0, 100).map(movie => (
+                                <SelectItem key={movie.stream_id} value={`movie-${movie.stream_id}`}>
+                                  {movie.name}
+                                </SelectItem>
+                              ))}
+                              {(vodStreams || []).length > 100 && (
+                                <SelectItem value="" disabled>
+                                  ... and {(vodStreams || []).length - 100} more (search to find specific titles)
+                                </SelectItem>
+                              )}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div className="space-y-2">
                           <Label>Choose from Series</Label>
-                          <select
-                            className="w-full p-2 border rounded text-sm"
+                          <Select
                             value={layout.heroContentId?.startsWith('series-') ? layout.heroContentId : ''}
-                            onChange={(e) => setLayout(prev => ({ 
+                            onValueChange={(value) => setLayout(prev => ({ 
                               ...prev, 
-                              heroContentId: e.target.value || undefined 
+                              heroContentId: value || undefined 
                             }))}
-                            data-testid="select-hero-series"
                           >
-                            <option value="">Select a series... ({(seriesData || []).length} available)</option>
-                            {(seriesData || []).map(series => (
-                              <option key={series.series_id} value={`series-${series.series_id}`}>
-                                {series.name}
-                              </option>
-                            ))}
-                          </select>
+                            <SelectTrigger data-testid="select-hero-series">
+                              <SelectValue placeholder={`Select a series... (${(seriesData || []).length} available)`} />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-64">
+                              <SelectItem value="">None selected</SelectItem>
+                              {(seriesData || []).slice(0, 100).map(series => (
+                                <SelectItem key={series.series_id} value={`series-${series.series_id}`}>
+                                  {series.name}
+                                </SelectItem>
+                              ))}
+                              {(seriesData || []).length > 100 && (
+                                <SelectItem value="" disabled>
+                                  ... and {(seriesData || []).length - 100} more (search to find specific titles)
+                                </SelectItem>
+                              )}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                       <p className="text-xs text-muted-foreground">
