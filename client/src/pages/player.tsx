@@ -52,7 +52,14 @@ export default function Player() {
     const handlePause = () => setIsPlaying(false);
     const handleError = (e: Event) => {
       console.error('Video error:', e);
-      setError('Failed to load video stream. The content may not be available.');
+      const videoError = (e.target as HTMLVideoElement)?.error;
+      if (videoError) {
+        console.error('Video error details:', {
+          code: videoError.code,
+          message: videoError.message
+        });
+      }
+      setError('Failed to load video stream. This content may not be available or the format is not supported.');
       setIsPlaying(false);
     };
 
@@ -82,18 +89,27 @@ export default function Player() {
     if (streamUrl && videoRef.current) {
       console.log('Loading stream:', streamUrl);
       setError(null);
-      videoRef.current.src = streamUrl;
+      
+      // Try HLS/M3U8 format first for live streams, then fallback to direct URL
+      if (streamType === 'live') {
+        // For live streams, try to use a compatible format
+        const hlsUrl = streamUrl.replace('.ts', '.m3u8');
+        videoRef.current.src = hlsUrl;
+      } else {
+        videoRef.current.src = streamUrl;
+      }
+      
       videoRef.current.load();
       
       // Try to play after a short delay
       setTimeout(() => {
         videoRef.current?.play().catch((err) => {
           console.error('Autoplay failed:', err);
-          setError('Click play to start the video');
+          setError('Click play to start the video. Note: Some IPTV streams may require external player support.');
         });
       }, 1000);
     }
-  }, [streamUrl]);
+  }, [streamUrl, streamType]);
 
   const togglePlay = () => {
     if (!videoRef.current) return;
@@ -179,9 +195,17 @@ export default function Player() {
       {/* Error Message */}
       {error && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20">
-          <div className="text-center text-white p-6">
+          <div className="text-center text-white p-6 max-w-md">
             <h3 className="text-xl mb-4">Playback Error</h3>
             <p className="mb-6">{error}</p>
+            <div className="text-sm text-gray-300 mb-6">
+              <p className="mb-2">IPTV streams may require:</p>
+              <ul className="text-left list-disc list-inside space-y-1">
+                <li>External player (VLC, Kodi)</li>
+                <li>Different network location</li>
+                <li>Specific stream format support</li>
+              </ul>
+            </div>
             <div className="space-x-4">
               <Button onClick={refreshStream} variant="outline" data-testid="button-refresh">
                 <RotateCcw className="w-4 h-4 mr-2" />
@@ -192,6 +216,11 @@ export default function Player() {
                 Go Back
               </Button>
             </div>
+            {streamUrl && (
+              <div className="mt-4 text-xs text-gray-400">
+                <p>Stream URL: {streamUrl}</p>
+              </div>
+            )}
           </div>
         </div>
       )}
