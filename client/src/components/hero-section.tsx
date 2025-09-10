@@ -31,7 +31,7 @@ export function HeroSection({ featuredContent, onPlay, onAddToList }: HeroSectio
           <img 
             src={content.poster} 
             alt={content.title}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover object-top"
             data-testid="hero-banner"
           />
         ) : (
@@ -50,9 +50,9 @@ export function HeroSection({ featuredContent, onPlay, onAddToList }: HeroSectio
       {/* Content Cards */}
       <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8 pb-8">
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-end">
+          <div className="flex flex-col lg:flex-row gap-8 items-end">
             {/* Box Cover */}
-            <div className="flex justify-center lg:justify-start">
+            <div className="flex justify-center lg:justify-start flex-shrink-0">
               <div className="relative group">
                 {content.poster ? (
                   <img 
@@ -74,7 +74,7 @@ export function HeroSection({ featuredContent, onPlay, onAddToList }: HeroSectio
             </div>
 
             {/* Main Info Card - 25% wider, reduced height */}
-            <div className="lg:col-span-1 w-full lg:w-[125%] bg-black/70 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-white/20 shadow-2xl">
+            <div className="flex-1 max-w-[125%] bg-black/70 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-white/20 shadow-2xl">
               <div className="space-y-3">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
@@ -134,7 +134,7 @@ export function HeroSection({ featuredContent, onPlay, onAddToList }: HeroSectio
 
             {/* Action Card */}
             {featuredContent && (
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 shadow-2xl">
+              <div className="flex-shrink-0 bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 shadow-2xl">
                 <div className="space-y-4">
                   <h2 className="text-lg font-semibold text-white mb-4">Quick Actions</h2>
                   <div className="space-y-3">
