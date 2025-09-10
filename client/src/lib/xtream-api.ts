@@ -13,12 +13,26 @@ export class XtreamAPI {
     this.baseUrl = `${this.serverUrl}/player_api.php?username=${this.username}&password=${this.password}`;
   }
 
-  private async makeRequest(url: string): Promise<any> {
+  private async makeProxyRequest(endpoint: string, data: any): Promise<any> {
     try {
-      const response = await fetch(url);
+      const config = {
+        serverUrl: this.serverUrl,
+        username: this.username,
+        password: this.password,
+      };
+      
+      const response = await fetch(`/api/xtream/${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ config, ...data }),
+      });
+      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
+      
       return await response.json();
     } catch (error) {
       console.error('API request failed:', error);
@@ -27,58 +41,52 @@ export class XtreamAPI {
   }
 
   async authenticate(): Promise<XtreamUserInfo> {
-    return this.makeRequest(this.baseUrl);
+    return this.makeProxyRequest('authenticate', {});
   }
 
   async getLiveCategories(): Promise<XtreamCategory[]> {
-    const url = `${this.baseUrl}&action=get_live_categories`;
-    return this.makeRequest(url);
+    return this.makeProxyRequest('categories', { action: 'get_live_categories' });
   }
 
   async getLiveStreams(categoryId?: string): Promise<XtreamStream[]> {
-    const url = categoryId 
-      ? `${this.baseUrl}&action=get_live_streams&category_id=${categoryId}`
-      : `${this.baseUrl}&action=get_live_streams`;
-    return this.makeRequest(url);
+    return this.makeProxyRequest('streams', { 
+      action: 'get_live_streams', 
+      categoryId 
+    });
   }
 
   async getVODCategories(): Promise<XtreamCategory[]> {
-    const url = `${this.baseUrl}&action=get_vod_categories`;
-    return this.makeRequest(url);
+    return this.makeProxyRequest('categories', { action: 'get_vod_categories' });
   }
 
   async getVODStreams(categoryId?: string): Promise<XtreamVOD[]> {
-    const url = categoryId 
-      ? `${this.baseUrl}&action=get_vod_streams&category_id=${categoryId}`
-      : `${this.baseUrl}&action=get_vod_streams`;
-    return this.makeRequest(url);
+    return this.makeProxyRequest('streams', { 
+      action: 'get_vod_streams', 
+      categoryId 
+    });
   }
 
   async getSeriesCategories(): Promise<XtreamCategory[]> {
-    const url = `${this.baseUrl}&action=get_series_categories`;
-    return this.makeRequest(url);
+    return this.makeProxyRequest('categories', { action: 'get_series_categories' });
   }
 
   async getSeries(categoryId?: string): Promise<XtreamSeries[]> {
-    const url = categoryId 
-      ? `${this.baseUrl}&action=get_series&category_id=${categoryId}`
-      : `${this.baseUrl}&action=get_series`;
-    return this.makeRequest(url);
+    return this.makeProxyRequest('streams', { 
+      action: 'get_series', 
+      categoryId 
+    });
   }
 
   async getEPG(streamId: number): Promise<XtreamEPG[]> {
-    const url = `${this.baseUrl}&action=get_short_epg&stream_id=${streamId}`;
-    return this.makeRequest(url);
+    return this.makeProxyRequest('epg', { streamId });
   }
 
   async getVODInfo(vodId: number): Promise<any> {
-    const url = `${this.baseUrl}&action=get_vod_info&vod_id=${vodId}`;
-    return this.makeRequest(url);
+    return this.makeProxyRequest('vod-info', { vodId });
   }
 
   async getSeriesInfo(seriesId: number): Promise<any> {
-    const url = `${this.baseUrl}&action=get_series_info&series_id=${seriesId}`;
-    return this.makeRequest(url);
+    return this.makeProxyRequest('series-info', { seriesId });
   }
 
   buildStreamUrl(streamId: number, type: 'live' | 'movie' | 'series', extension: string = 'ts'): string {
