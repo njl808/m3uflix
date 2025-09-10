@@ -60,12 +60,14 @@ export function ContentGrid({ title, content, onContentClick, isLoading }: Conte
             data-testid={`content-card-${item.id}`}
           >
             {item.poster ? (
-              <img 
-                src={item.poster} 
-                alt={item.title}
-                className="w-full h-48 object-cover"
-                data-testid={`content-poster-${item.id}`}
-              />
+              <div className={`w-full h-48 ${item.type === 'live' ? 'bg-muted/30 p-2' : ''} flex items-center justify-center`}>
+                <img 
+                  src={item.poster} 
+                  alt={item.title}
+                  className={`${item.type === 'live' ? 'max-w-full max-h-full object-contain' : 'w-full h-full object-cover'}`}
+                  data-testid={`content-poster-${item.id}`}
+                />
+              </div>
             ) : (
               <div className="w-full h-48 bg-muted flex items-center justify-center">
                 <span className="text-muted-foreground text-sm">No Image</span>
