@@ -1,0 +1,51 @@
+After thoroughly examining the codebase, I've identified several key issues and areas for improvement:
+
+Current Architecture:
+
+React frontend with TypeScript using Wouter for routing
+Express.js backend with video streaming proxy
+Xtream Codes API integration for IPTV content
+Tailwind CSS for styling
+Key Player Issues Identified:
+
+Video Format Compatibility: The player tries to convert .ts to .m3u8 for live streams, but this may not work for all IPTV providers
+Mixed Content Errors: HTTPS site trying to load HTTP streams causing security issues
+Limited Video Format Support: Only supports basic HTML5 video element without HLS.js library
+Error Handling: Generic error messages that don't help users understand specific issues
+Stream URL Building: Hardcoded extensions and limited format flexibility
+No Adaptive Streaming: Missing support for adaptive bitrate streaming
+CORS Issues: While proxy exists, some edge cases may still cause problems
+Plan:
+1. Enhanced Video Player Component (client/src/pages/player.tsx)
+Add HLS.js library support for proper HLS/M3U8 streaming
+Implement multiple format fallback system (HLS → MP4 → TS)
+Add better error handling with specific error codes and user-friendly messages
+Implement retry mechanism with exponential backoff
+Add support for adaptive bitrate streaming
+2. Improved Stream URL Building (client/src/lib/xtream-api.ts)
+Add dynamic format detection based on stream type
+Support multiple stream formats (m3u8, ts, mp4, mkv)
+Implement fallback URL generation
+Add stream quality selection
+3. Enhanced Backend Proxy (server/routes.ts)
+Add support for HLS manifest files (.m3u8)
+Implement better error handling and logging
+Add stream health checking
+Support for different video codecs and containers
+Add caching for frequently accessed streams
+4. Security and Performance Improvements
+Fix mixed content issues by ensuring HTTPS compatibility
+Add stream validation and sanitization
+Implement rate limiting for stream requests
+Add connection pooling for better performance
+5. User Experience Enhancements
+Add loading states with progress indicators
+Implement better error recovery options
+Add stream quality selector in UI
+Provide external player integration options (VLC, Kodi)
+Dependent Files to be edited:
+client/src/pages/player.tsx - Main player component
+client/src/lib/xtream-api.ts - Stream URL building logic
+server/routes.ts - Backend streaming proxy
+package.json - Add HLS.js dependency
+client/src/components/video-player.tsx - Enhanced video component (if needed)

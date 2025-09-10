@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation, useRoute } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Play, Pause, Volume2, VolumeX, Maximize, RotateCcw } from "lucide-react";
+import { ArrowLeft, Play, Pause, Volume2, VolumeX, Maximize, RotateCcw, ExternalLink } from "lucide-react";
 import { useXtreamConfig, useXtreamAPI } from "@/hooks/use-xtream-api";
+import Hls from "hls.js";
 
 export default function Player() {
   const [, params] = useRoute("/player/:type/:streamId");
@@ -11,6 +12,7 @@ export default function Player() {
   const api = useXtreamAPI(config);
   
   const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -18,12 +20,60 @@ export default function Player() {
   const [showControls, setShowControls] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentFormat, setCurrentFormat] = useState<string>('');
+  const [retryCount, setRetryCount] = useState(0);
 
   const streamType = params?.type as 'live' | 'movie' | 'series';
   const streamId = params?.streamId ? parseInt(params.streamId) : null;
 
-  // Generate stream URL
-  const streamUrl = api && streamId ? api.buildStreamUrl(streamId, streamType) : null;
+  // Generate multiple stream URLs for fallback
+  const getStreamUrls = (streamId: number, streamType: string) => {
+    if (!api) return [];
+    
+    const baseUrl = api.buildStreamUrl(streamId, streamType);
+    const urls = [];
+    
+    if (streamType === 'live') {
+      // For live streams, try multiple formats
+      urls.push({
+        url: baseUrl.replace('.ts', '.m3u8'),
+        format: 'HLS',
+        description: 'HLS Stream (recommended)'
+      });
+      urls.push({
+        url: baseUrl,
+        format: 'TS',
+        description: 'Transport Stream'
+      });
+      urls.push({
+        url: baseUrl.replace('.ts', '.mp4'),
+        format: 'MP4',
+        description: 'MP4 Stream'
+      });
+    } else {
+      // For VOD, try different extensions
+      urls.push({
+        url: baseUrl,
+        format: 'Original',
+        description: 'Original format'
+      });
+      urls.push({
+        url: baseUrl.replace(/\.[^.]+$/, '.mp4'),
+        format: 'MP4',
+        description: 'MP4 format'
+      });
+      urls.push({
+        url: baseUrl.replace(/\.[^.]+$/, '.mkv'),
+        format: 'MKV',
+        description: 'MKV format'
+      });
+    }
+    
+    return urls;
+  };
+
+  const streamUrls = streamId ? getStreamUrls(streamId, streamType) : [];
 
   // Auto-hide controls
   useEffect(() => {
@@ -84,32 +134,132 @@ export default function Player() {
     };
   }, []);
 
-  // Load video when URL changes
-  useEffect(() => {
-    if (streamUrl && videoRef.current) {
-      console.log('Loading stream:', streamUrl);
-      setError(null);
-      
-      // Try HLS/M3U8 format first for live streams, then fallback to direct URL
-      if (streamType === 'live') {
-        // For live streams, try to use a compatible format
-        const hlsUrl = streamUrl.replace('.ts', '.m3u8');
-        videoRef.current.src = hlsUrl;
-      } else {
-        videoRef.current.src = streamUrl;
-      }
-      
-      videoRef.current.load();
-      
-      // Try to play after a short delay
-      setTimeout(() => {
-        videoRef.current?.play().catch((err) => {
-          console.error('Autoplay failed:', err);
-          setError('Click play to start the video. Note: Some IPTV streams may require external player support.');
-        });
-      }, 1000);
+  // Enhanced stream loading with HLS.js and fallback
+  const loadStream = async (urlIndex = 0) => {
+    if (!streamUrls.length || !videoRef.current || urlIndex >= streamUrls.length) {
+      setError('No compatible stream formats available');
+      setIsLoading(false);
+      return;
     }
-  }, [streamUrl, streamType]);
+
+    const streamData = streamUrls[urlIndex];
+    const { url, format, description } = streamData;
+    
+    console.log(`Trying stream ${urlIndex + 1}/${streamUrls.length}: ${format} - ${url}`);
+    setCurrentFormat(format);
+    setIsLoading(true);
+    setError(null);
+
+    // Clean up previous HLS instance
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+
+    try {
+      // Check if it's an HLS stream and HLS.js is supported
+      if ((url.includes('.m3u8') || format === 'HLS') && Hls.isSupported()) {
+        console.log('Using HLS.js for playback');
+        
+        const hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: streamType === 'live',
+          backBufferLength: 90,
+          maxBufferLength: 60,
+          maxMaxBufferLength: 600,
+          startLevel: -1,
+          debug: false,
+        });
+
+        hls.loadSource(url);
+        hls.attachMedia(videoRef.current);
+        hlsRef.current = hls;
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          console.log('HLS manifest loaded successfully');
+          setIsLoading(false);
+          videoRef.current?.play().catch((err) => {
+            console.error('HLS autoplay failed:', err);
+            setError('Click play to start the video');
+          });
+        });
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          console.error('HLS error:', data);
+          if (data.fatal) {
+            setIsLoading(false);
+            if (urlIndex < streamUrls.length - 1) {
+              console.log('HLS failed, trying next format...');
+              setTimeout(() => loadStream(urlIndex + 1), 1000);
+            } else {
+              setError(`HLS Error: ${data.details || 'Stream failed to load'}`);
+            }
+          }
+        });
+
+      } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl') && url.includes('.m3u8')) {
+        // Native HLS support (Safari)
+        console.log('Using native HLS playback');
+        videoRef.current.src = url;
+        videoRef.current.load();
+        setIsLoading(false);
+        
+        setTimeout(() => {
+          videoRef.current?.play().catch((err) => {
+            console.error('Native HLS autoplay failed:', err);
+            if (urlIndex < streamUrls.length - 1) {
+              loadStream(urlIndex + 1);
+            } else {
+              setError('Click play to start the video');
+            }
+          });
+        }, 1000);
+
+      } else {
+        // Direct HTML5 video playback
+        console.log('Using direct HTML5 playback');
+        videoRef.current.src = url;
+        videoRef.current.load();
+        setIsLoading(false);
+        
+        setTimeout(() => {
+          videoRef.current?.play().catch((err) => {
+            console.error('Direct playback failed:', err);
+            if (urlIndex < streamUrls.length - 1) {
+              console.log('Direct playback failed, trying next format...');
+              setTimeout(() => loadStream(urlIndex + 1), 1000);
+            } else {
+              setError('Unable to play this stream with any available format');
+            }
+          });
+        }, 1000);
+      }
+
+    } catch (err) {
+      console.error('Stream loading error:', err);
+      setIsLoading(false);
+      if (urlIndex < streamUrls.length - 1) {
+        setTimeout(() => loadStream(urlIndex + 1), 1000);
+      } else {
+        setError('Failed to load stream with any available format');
+      }
+    }
+  };
+
+  // Load stream when component mounts or stream changes
+  useEffect(() => {
+    if (streamUrls.length > 0) {
+      loadStream(0);
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, [streamId, streamType]);
 
   const togglePlay = () => {
     if (!videoRef.current) return;
@@ -146,14 +296,39 @@ export default function Player() {
   };
 
   const refreshStream = () => {
-    if (videoRef.current && streamUrl) {
-      setError(null);
-      videoRef.current.src = streamUrl;
-      videoRef.current.load();
-      videoRef.current.play().catch((err) => {
-        console.error('Refresh play failed:', err);
-        setError('Unable to refresh stream');
-      });
+    setRetryCount(prev => prev + 1);
+    setError(null);
+    loadStream(0);
+  };
+
+  const openExternalPlayer = () => {
+    if (streamUrls.length > 0) {
+      const streamUrl = streamUrls[0].url;
+      // Create VLC protocol link
+      const vlcUrl = `vlc://${streamUrl}`;
+      window.open(vlcUrl, '_blank');
+      
+      // Also show the direct URL for manual copying
+      const newWindow = window.open('', '_blank');
+      if (newWindow) {
+        newWindow.document.write(`
+          <html>
+            <head><title>Stream URLs</title></head>
+            <body style="font-family: Arial, sans-serif; padding: 20px;">
+              <h2>IPTV Stream URLs</h2>
+              <p>Copy any of these URLs to your preferred media player:</p>
+              ${streamUrls.map((stream, index) => `
+                <div style="margin: 10px 0; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                  <strong>${stream.format}</strong> - ${stream.description}<br>
+                  <input type="text" value="${stream.url}" style="width: 100%; margin-top: 5px;" readonly>
+                  <button onclick="navigator.clipboard.writeText('${stream.url}')">Copy</button>
+                </div>
+              `).join('')}
+              <p style="margin-top: 20px;"><small>Recommended players: VLC, Kodi, PotPlayer, MPC-HC</small></p>
+            </body>
+          </html>
+        `);
+      }
     }
   };
 
@@ -199,28 +374,32 @@ export default function Player() {
             <h3 className="text-xl mb-4">Playback Error</h3>
             <p className="mb-6">{error}</p>
             <div className="text-sm text-gray-300 mb-6">
-              <p className="mb-2">IPTV streams may require:</p>
+              <p className="mb-2">Tried formats: {streamUrls.map(s => s.format).join(', ')}</p>
+              <p className="mb-2">Current: {currentFormat}</p>
+              <p className="mb-2">Retries: {retryCount}</p>
+              <p className="mb-2">Solutions:</p>
               <ul className="text-left list-disc list-inside space-y-1">
-                <li>External player (VLC, Kodi)</li>
-                <li>Different network location</li>
-                <li>Specific stream format support</li>
+                <li>Try external player (VLC, Kodi, PotPlayer)</li>
+                <li>Check network connection</li>
+                <li>Different stream server may be needed</li>
               </ul>
             </div>
-            <div className="space-x-4">
+            <div className="space-x-4 mb-4">
               <Button onClick={refreshStream} variant="outline" data-testid="button-refresh">
                 <RotateCcw className="w-4 h-4 mr-2" />
                 Try Again
               </Button>
+              <Button onClick={openExternalPlayer} variant="outline" data-testid="button-external">
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Open in VLC/External Player
+              </Button>
+            </div>
+            <div className="space-x-4">
               <Button onClick={goBack} data-testid="button-back-error">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Go Back
               </Button>
             </div>
-            {streamUrl && (
-              <div className="mt-4 text-xs text-gray-400">
-                <p>Stream URL: {streamUrl}</p>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -312,11 +491,14 @@ export default function Player() {
       )}
 
       {/* Loading Indicator */}
-      {!error && streamUrl && duration === 0 && (
+      {isLoading && !error && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-15">
           <div className="text-white text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
-            <p>Loading stream...</p>
+            <p>Loading {currentFormat} stream...</p>
+            <p className="text-sm text-gray-300 mt-2">
+              Format {streamUrls.findIndex(s => s.format === currentFormat) + 1} of {streamUrls.length}
+            </p>
           </div>
         </div>
       )}
