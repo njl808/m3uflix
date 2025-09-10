@@ -72,6 +72,14 @@ export default function Admin() {
   const [newSectionName, setNewSectionName] = useState('');
   const [selectedContent, setSelectedContent] = useState<string[]>([]);
 
+  // Content management state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedType, setSelectedType] = useState<'all' | 'live' | 'movie' | 'series'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(50);
+  const [bulkSelectMode, setBulkSelectMode] = useState(false);
+
   // Save layout whenever it changes
   useEffect(() => {
     localStorage.setItem('iptv-homepage-layout', JSON.stringify(layout));
@@ -185,6 +193,60 @@ export default function Admin() {
 
   const getContentById = (contentId: string) => {
     return allContent.find(item => item.id === contentId);
+  };
+
+  // Filter and paginate content
+  const filteredContent = allContent.filter(item => {
+    // Search filter
+    if (searchQuery && !item.title.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+    
+    // Type filter
+    if (selectedType !== 'all' && item.type !== selectedType) {
+      return false;
+    }
+    
+    // Category filter
+    if (selectedCategory !== 'all' && item.categoryId !== selectedCategory) {
+      return false;
+    }
+    
+    return true;
+  });
+
+  const totalPages = Math.ceil(filteredContent.length / pageSize);
+  const paginatedContent = filteredContent.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
+  // Get all unique categories
+  const allCategories = [
+    ...(liveCategories || []),
+    ...(vodCategories || []),
+    ...(seriesCategories || [])
+  ];
+
+  const toggleAllContent = () => {
+    if (bulkSelectMode) {
+      if (selectedContent.length === filteredContent.length) {
+        setSelectedContent([]);
+      } else {
+        setSelectedContent(filteredContent.map(item => item.id));
+      }
+    }
+  };
+
+  const selectContentByCategory = (categoryId: string) => {
+    const categoryContent = allContent
+      .filter(item => item.categoryId === categoryId)
+      .map(item => item.id);
+    
+    setSelectedContent(prev => [
+      ...prev.filter(id => !categoryContent.includes(id)),
+      ...categoryContent
+    ]);
   };
 
   return (
@@ -413,12 +475,140 @@ export default function Admin() {
           <TabsContent value="content" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Content Selection</CardTitle>
+                <CardTitle className="flex items-center justify-between">
+                  Content Selection
+                  <Badge variant="outline">
+                    {filteredContent.length.toLocaleString()} of {allContent.length.toLocaleString()} items
+                  </Badge>
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 max-h-96 overflow-y-auto">
-                  {allContent.slice(0, 100).map(item => (
-                    <div key={item.id} className="flex items-center justify-between p-3 border rounded">
+              <CardContent className="space-y-6">
+                {/* Search and Filters */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="search-content">Search Content</Label>
+                    <Input
+                      id="search-content"
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                      placeholder="Search by title..."
+                      data-testid="input-search-content"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Content Type</Label>
+                    <Select
+                      value={selectedType}
+                      onValueChange={(value: 'all' | 'live' | 'movie' | 'series') => {
+                        setSelectedType(value);
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <SelectTrigger data-testid="select-content-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Types</SelectItem>
+                        <SelectItem value="live">Live TV</SelectItem>
+                        <SelectItem value="movie">Movies</SelectItem>
+                        <SelectItem value="series">Series</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Category</Label>
+                    <Select
+                      value={selectedCategory}
+                      onValueChange={(value) => {
+                        setSelectedCategory(value);
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <SelectTrigger data-testid="select-content-category">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Categories</SelectItem>
+                        {allCategories.map(cat => (
+                          <SelectItem key={cat.category_id} value={cat.category_id}>
+                            {cat.category_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Selection Mode</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        variant={bulkSelectMode ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setBulkSelectMode(!bulkSelectMode)}
+                        data-testid="button-bulk-mode"
+                      >
+                        Bulk Mode
+                      </Button>
+                      {bulkSelectMode && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={toggleAllContent}
+                          data-testid="button-select-all"
+                        >
+                          {selectedContent.length === filteredContent.length ? 'Deselect All' : 'Select All'}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Category Selection */}
+                {bulkSelectMode && (
+                  <div className="space-y-3">
+                    <Label>Quick Category Selection</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {allCategories.slice(0, 10).map(cat => (
+                        <Button
+                          key={cat.category_id}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => selectContentByCategory(cat.category_id)}
+                          data-testid={`button-select-category-${cat.category_id}`}
+                        >
+                          + {cat.category_name}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Selected Count */}
+                <div className="flex items-center justify-between bg-muted p-3 rounded">
+                  <span className="text-sm">
+                    Selected: <strong>{selectedContent.length.toLocaleString()}</strong> items
+                  </span>
+                  {selectedContent.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedContent([])}
+                      data-testid="button-clear-selection"
+                    >
+                      Clear Selection
+                    </Button>
+                  )}
+                </div>
+
+                {/* Content List */}
+                <div className="space-y-2 max-h-96 overflow-y-auto border rounded p-4">
+                  {paginatedContent.map(item => (
+                    <div key={item.id} className="flex items-center justify-between p-2 hover:bg-muted rounded">
                       <div className="flex items-center gap-3">
                         <input
                           type="checkbox"
@@ -426,24 +616,54 @@ export default function Admin() {
                           onChange={() => toggleContentSelection(item.id)}
                           data-testid={`checkbox-content-${item.id}`}
                         />
-                        <div>
-                          <span className="font-medium">{item.title}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">{item.title}</div>
                           <div className="flex gap-2 mt-1">
-                            <Badge variant="outline">{item.type}</Badge>
+                            <Badge variant="outline" className="text-xs">{item.type}</Badge>
                             {item.rating && (
-                              <Badge variant="secondary">★ {item.rating}</Badge>
+                              <Badge variant="secondary" className="text-xs">★ {item.rating}</Badge>
                             )}
                           </div>
                         </div>
                       </div>
                     </div>
                   ))}
-                  {allContent.length > 100 && (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      Showing first 100 items. Search functionality coming soon.
-                    </p>
+                  
+                  {filteredContent.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No content found matching your filters
+                    </div>
                   )}
                 </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-muted-foreground">
+                      Page {currentPage} of {totalPages} • Showing {paginatedContent.length} of {filteredContent.length.toLocaleString()} filtered items
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        data-testid="button-prev-page"
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={currentPage === totalPages}
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        data-testid="button-next-page"
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
