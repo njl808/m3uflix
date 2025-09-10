@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useLocation } from "wouter";
 import { Navigation } from "@/components/navigation";
 import { HeroSection } from "@/components/hero-section";
 import { ContentGrid } from "@/components/content-grid";
@@ -15,12 +16,11 @@ export default function Home() {
   const api = useXtreamAPI(config);
   const { toast } = useToast();
   const { addToFavorites, removeFromFavorites, isFavorite, favorites } = useFavorites();
+  const [location, setLocation] = useLocation();
 
   // UI State
   const [currentSection, setCurrentSection] = useState('home');
   const [isSetupOpen, setIsSetupOpen] = useState(!config);
-  const [currentContent, setCurrentContent] = useState<ContentItem | null>(null);
-  const [streamUrl, setStreamUrl] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [epgModalOpen, setEpgModalOpen] = useState(false);
@@ -90,14 +90,8 @@ export default function Home() {
   const handlePlayContent = (content: ContentItem) => {
     if (!api) return;
 
-    const url = api.buildStreamUrl(content.streamId, content.type);
-    setStreamUrl(url);
-    setCurrentContent(content);
-
-    // Load EPG for live streams
-    if (content.type === 'live') {
-      setSelectedStreamId(content.streamId);
-    }
+    // Navigate to the separate player page
+    setLocation(`/player/${content.type}/${content.streamId}`);
   };
 
   const handleAddToList = (content: ContentItem) => {
