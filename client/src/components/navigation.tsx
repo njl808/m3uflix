@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Settings, Shield } from "lucide-react";
 import { useLocation } from "wouter";
+import logoImage from "@assets/8zero8logowht_1757535850425.png";
 
 interface NavigationProps {
   currentSection: string;
@@ -34,8 +35,12 @@ export function Navigation({ currentSection, onSectionChange, onSettingsClick, o
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center space-x-8">
-            <div className="text-2xl font-bold text-primary" data-testid="app-title">
-              IPTV Player
+            <div className="flex items-center" data-testid="app-title">
+              <img 
+                src={logoImage} 
+                alt="8ZER08" 
+                className="h-8 w-auto"
+              />
             </div>
             <div className="hidden md:flex space-x-6">
               {navItems.map((item) => (
