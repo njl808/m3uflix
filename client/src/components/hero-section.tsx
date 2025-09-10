@@ -50,7 +50,29 @@ export function HeroSection({ featuredContent, onPlay, onAddToList }: HeroSectio
       {/* Content Cards */}
       <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8 pb-8">
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-end">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-end">
+            {/* Box Cover */}
+            <div className="flex justify-center lg:justify-start">
+              <div className="relative group">
+                {content.poster ? (
+                  <img 
+                    src={content.poster} 
+                    alt={content.title}
+                    className="w-48 h-72 md:w-56 md:h-84 object-cover rounded-xl shadow-2xl border-2 border-white/20"
+                    data-testid="hero-poster"
+                  />
+                ) : (
+                  <div className="w-48 h-72 md:w-56 md:h-84 bg-black/50 backdrop-blur-sm rounded-xl shadow-2xl border-2 border-white/20 flex items-center justify-center">
+                    <div className="text-center text-white/60">
+                      <div className="text-4xl mb-2">📺</div>
+                      <div className="text-sm">No Image</div>
+                    </div>
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-black/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+              </div>
+            </div>
+
             {/* Main Info Card */}
             <div className="bg-black/70 backdrop-blur-sm rounded-xl p-6 md:p-8 border border-white/20 shadow-2xl">
               <div className="space-y-4">
