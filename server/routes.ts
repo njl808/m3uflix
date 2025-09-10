@@ -300,9 +300,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`[VIDEO PROXY] Requesting: ${streamUrl.replace(password, '***')}`);
 
-      // Add random delay to avoid CloudFlare rate limiting (1-3 seconds)
-      const delay = Math.random() * 2000 + 1000; // 1000-3000ms
-      await new Promise(resolve => setTimeout(resolve, delay));
+      // Add random delay to avoid CloudFlare rate limiting
+      // Reduced delay for TS segments (live streaming)
+      if (extension === 'ts') {
+        const delay = Math.random() * 500 + 200; // 200-700ms for TS segments
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        const delay = Math.random() * 2000 + 1000; // 1000-3000ms for other files
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
 
       // Set appropriate headers for streaming
       const contentType = extension === 'ts' ? 'video/mp2t' : 
@@ -345,9 +351,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Add timeout control using AbortController
       const abortController = new AbortController();
+      // Shorter timeout for live TS segments to prevent buffering issues
+      const timeout = extension === 'ts' ? 15000 : 60000; // 15s for TS, 60s for others
       const timeoutId = setTimeout(() => {
         abortController.abort();
-      }, 60000); // Increased to 60 second timeout for large files
+      }, timeout);
 
       let streamResponse: Response;
       let retryCount = 0;
@@ -395,6 +403,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`[VIDEO PROXY] Original playlist length: ${playlistText.length} chars`);
           
           // Rewrite the playlist to proxy all segments through our server
+          // Force HTTPS to avoid mixed content issues in Replit
+          const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
+          const actualProtocol = 'https'; // Always use HTTPS to fix mixed content
+          
+          console.log(`[VIDEO PROXY] Using protocol: ${actualProtocol} for rewritten URLs`);
+          
           const rewrittenPlaylist = rewriteM3U8Playlist(
             playlistText, 
             serverUrl, 
@@ -402,7 +416,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             username, 
             password, 
             req.get('host') || 'localhost:5000',
-            req.protocol
+            actualProtocol
           );
           
           console.log(`[VIDEO PROXY] Rewritten playlist length: ${rewrittenPlaylist.length} chars`);
