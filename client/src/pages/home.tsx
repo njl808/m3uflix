@@ -27,6 +27,17 @@ export default function Home() {
   const [selectedStreamId, setSelectedStreamId] = useState<number | null>(null);
   const [filteredContent, setFilteredContent] = useState<ContentItem[]>([]);
   const [filterSettings, setFilterSettings] = useState<any>(null);
+  
+  // Load homepage layout from admin panel
+  const [homepageLayout, setHomepageLayout] = useState(() => {
+    const saved = localStorage.getItem('iptv-homepage-layout');
+    return saved ? JSON.parse(saved) : {
+      showHero: true,
+      customSections: [],
+      defaultSections: { live: true, movies: true, series: true },
+      sectionOrder: ['live', 'movies', 'series']
+    };
+  });
 
   // API Queries
   const { data: authData, isError: authError } = useAuthentication(api);
@@ -88,6 +99,25 @@ export default function Home() {
       });
     }
   }, [authError]);
+
+  // Reload layout when returning from admin panel
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const saved = localStorage.getItem('iptv-homepage-layout');
+      if (saved) {
+        setHomepageLayout(JSON.parse(saved));
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    // Also check on focus in case user edited in another tab
+    window.addEventListener('focus', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('focus', handleStorageChange);
+    };
+  }, []);
 
   const handlePlayContent = (content: ContentItem) => {
     if (!api) return;
@@ -178,9 +208,13 @@ export default function Home() {
 
 
       <main className="pt-16">
-        {currentSection === 'home' && !searchQuery && (
+        {currentSection === 'home' && !searchQuery && homepageLayout.showHero && (
           <HeroSection
-            featuredContent={movieContent[0]}
+            featuredContent={
+              homepageLayout.heroContentId 
+                ? allContent.find(item => item.id === homepageLayout.heroContentId) || movieContent[0]
+                : movieContent[0]
+            }
             onPlay={handlePlayContent}
             onAddToList={handleAddToList}
           />
@@ -237,24 +271,49 @@ export default function Home() {
           {/* Content Sections */}
           {currentSection === 'home' && !searchQuery ? (
             <>
-              <ContentGrid
-                title="Live TV Channels"
-                content={liveContent.slice(0, 14)}
-                onContentClick={handlePlayContent}
-                isLoading={liveLoading}
-              />
-              <ContentGrid
-                title="Popular Movies"
-                content={movieContent.slice(0, 14)}
-                onContentClick={handlePlayContent}
-                isLoading={vodLoading}
-              />
-              <ContentGrid
-                title="TV Series"
-                content={seriesContent.slice(0, 14)}
-                onContentClick={handlePlayContent}
-                isLoading={seriesLoading}
-              />
+              {/* Custom Sections */}
+              {homepageLayout.customSections
+                .filter(section => section.visible)
+                .sort((a, b) => a.order - b.order)
+                .map(section => (
+                  <ContentGrid
+                    key={section.id}
+                    title={section.title}
+                    content={section.contentIds
+                      .map(contentId => allContent.find(item => item.id === contentId))
+                      .filter(Boolean)
+                      .slice(0, section.limit || 20)
+                    }
+                    onContentClick={handlePlayContent}
+                    isLoading={false}
+                  />
+                ))}
+              
+              {/* Default Sections */}
+              {homepageLayout.defaultSections.live && (
+                <ContentGrid
+                  title="Live TV Channels"
+                  content={liveContent.slice(0, 14)}
+                  onContentClick={handlePlayContent}
+                  isLoading={liveLoading}
+                />
+              )}
+              {homepageLayout.defaultSections.movies && (
+                <ContentGrid
+                  title="Popular Movies"
+                  content={movieContent.slice(0, 14)}
+                  onContentClick={handlePlayContent}
+                  isLoading={vodLoading}
+                />
+              )}
+              {homepageLayout.defaultSections.series && (
+                <ContentGrid
+                  title="TV Series"
+                  content={seriesContent.slice(0, 14)}
+                  onContentClick={handlePlayContent}
+                  isLoading={seriesLoading}
+                />
+              )}
             </>
           ) : (
             <div className="space-y-6">
