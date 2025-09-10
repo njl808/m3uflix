@@ -712,42 +712,192 @@ export default function Admin() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="show-hero">Show Hero Section</Label>
-                    <p className="text-sm text-muted-foreground">Display featured content at the top</p>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label htmlFor="show-hero">Show Hero Section</Label>
+                      <p className="text-sm text-muted-foreground">Display featured content at the top</p>
+                    </div>
+                    <Switch
+                      id="show-hero"
+                      checked={layout.showHero}
+                      onCheckedChange={(checked) => 
+                        setLayout(prev => ({ ...prev, showHero: checked }))
+                      }
+                      data-testid="toggle-hero"
+                    />
                   </div>
-                  <Switch
-                    id="show-hero"
-                    checked={layout.showHero}
-                    onCheckedChange={(checked) => 
-                      setLayout(prev => ({ ...prev, showHero: checked }))
-                    }
-                    data-testid="toggle-hero"
-                  />
+                  
+                  {layout.showHero && (
+                    <div className="space-y-3 pl-4 border-l-2 border-muted">
+                      <Label>Hero Content Selection</Label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Choose from Movies</Label>
+                          <select
+                            className="w-full p-2 border rounded text-sm"
+                            value={layout.heroContentId?.startsWith('movie-') ? layout.heroContentId : ''}
+                            onChange={(e) => setLayout(prev => ({ 
+                              ...prev, 
+                              heroContentId: e.target.value || undefined 
+                            }))}
+                            data-testid="select-hero-movie"
+                          >
+                            <option value="">Select a movie...</option>
+                            {(vodStreams || []).slice(0, 50).map(movie => (
+                              <option key={movie.stream_id} value={`movie-${movie.stream_id}`}>
+                                {movie.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Choose from Series</Label>
+                          <select
+                            className="w-full p-2 border rounded text-sm"
+                            value={layout.heroContentId?.startsWith('series-') ? layout.heroContentId : ''}
+                            onChange={(e) => setLayout(prev => ({ 
+                              ...prev, 
+                              heroContentId: e.target.value || undefined 
+                            }))}
+                            data-testid="select-hero-series"
+                          >
+                            <option value="">Select a series...</option>
+                            {(seriesData || []).slice(0, 50).map(series => (
+                              <option key={series.series_id} value={`series-${series.series_id}`}>
+                                {series.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Current hero: {layout.heroContentId ? 
+                          (layout.heroContentId.startsWith('movie-') ? 'Movie' : 'Series') : 'None selected'}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-4">
-                  <Label>Default Sections</Label>
-                  <div className="space-y-3">
-                    {Object.entries(layout.defaultSections).map(([key, enabled]) => (
-                      <div key={key} className="flex items-center justify-between">
-                        <span className="capitalize">{key} TV</span>
+                  <Label>Section Display & Content Control</Label>
+                  <div className="space-y-6">
+                    {/* Live TV Section */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">Live TV Section</span>
                         <Switch
-                          checked={enabled}
+                          checked={layout.defaultSections.live}
                           onCheckedChange={(checked) => 
                             setLayout(prev => ({
                               ...prev,
                               defaultSections: {
                                 ...prev.defaultSections,
-                                [key]: checked
+                                live: checked
                               }
                             }))
                           }
-                          data-testid={`toggle-${key}-section`}
+                          data-testid="toggle-live-section"
                         />
                       </div>
-                    ))}
+                      {layout.defaultSections.live && (
+                        <div className="pl-4 border-l-2 border-muted">
+                          <Label className="text-sm">Choose Live TV Categories</Label>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-32 overflow-y-auto mt-2">
+                            {(liveCategories || []).slice(0, 20).map(category => (
+                              <div key={category.category_id} className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  checked={!(layout.globalCategoryFilters?.find(f => f.categoryId === category.category_id)?.visible === false)}
+                                  onChange={() => toggleGlobalCategory(category.category_id, 'live')}
+                                  className="text-xs"
+                                  data-testid={`live-category-${category.category_id}`}
+                                />
+                                <span className="text-xs truncate">{category.category_name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Movies Section */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">Movies Section</span>
+                        <Switch
+                          checked={layout.defaultSections.movies}
+                          onCheckedChange={(checked) => 
+                            setLayout(prev => ({
+                              ...prev,
+                              defaultSections: {
+                                ...prev.defaultSections,
+                                movies: checked
+                              }
+                            }))
+                          }
+                          data-testid="toggle-movies-section"
+                        />
+                      </div>
+                      {layout.defaultSections.movies && (
+                        <div className="pl-4 border-l-2 border-muted">
+                          <Label className="text-sm">Choose Movie Categories</Label>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-32 overflow-y-auto mt-2">
+                            {(vodCategories || []).slice(0, 20).map(category => (
+                              <div key={category.category_id} className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  checked={!(layout.globalCategoryFilters?.find(f => f.categoryId === category.category_id)?.visible === false)}
+                                  onChange={() => toggleGlobalCategory(category.category_id, 'movie')}
+                                  className="text-xs"
+                                  data-testid={`movie-category-${category.category_id}`}
+                                />
+                                <span className="text-xs truncate">{category.category_name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Series Section */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">Series Section</span>
+                        <Switch
+                          checked={layout.defaultSections.series}
+                          onCheckedChange={(checked) => 
+                            setLayout(prev => ({
+                              ...prev,
+                              defaultSections: {
+                                ...prev.defaultSections,
+                                series: checked
+                              }
+                            }))
+                          }
+                          data-testid="toggle-series-section"
+                        />
+                      </div>
+                      {layout.defaultSections.series && (
+                        <div className="pl-4 border-l-2 border-muted">
+                          <Label className="text-sm">Choose Series Categories</Label>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-32 overflow-y-auto mt-2">
+                            {(seriesCategories || []).slice(0, 20).map(category => (
+                              <div key={category.category_id} className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  checked={!(layout.globalCategoryFilters?.find(f => f.categoryId === category.category_id)?.visible === false)}
+                                  onChange={() => toggleGlobalCategory(category.category_id, 'series')}
+                                  className="text-xs"
+                                  data-testid={`series-category-${category.category_id}`}
+                                />
+                                <span className="text-xs truncate">{category.category_name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
