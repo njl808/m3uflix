@@ -743,8 +743,8 @@ export default function Admin() {
                             }))}
                             data-testid="select-hero-movie"
                           >
-                            <option value="">Select a movie...</option>
-                            {(vodStreams || []).slice(0, 50).map(movie => (
+                            <option value="">Select a movie... ({(vodStreams || []).length} available)</option>
+                            {(vodStreams || []).map(movie => (
                               <option key={movie.stream_id} value={`movie-${movie.stream_id}`}>
                                 {movie.name}
                               </option>
@@ -762,8 +762,8 @@ export default function Admin() {
                             }))}
                             data-testid="select-hero-series"
                           >
-                            <option value="">Select a series...</option>
-                            {(seriesData || []).slice(0, 50).map(series => (
+                            <option value="">Select a series... ({(seriesData || []).length} available)</option>
+                            {(seriesData || []).map(series => (
                               <option key={series.series_id} value={`series-${series.series_id}`}>
                                 {series.name}
                               </option>
@@ -802,10 +802,10 @@ export default function Admin() {
                       </div>
                       {layout.defaultSections.live && (
                         <div className="pl-4 border-l-2 border-muted">
-                          <Label className="text-sm">Choose Live TV Categories</Label>
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-32 overflow-y-auto mt-2">
-                            {(liveCategories || []).slice(0, 20).map(category => (
-                              <div key={category.category_id} className="flex items-center space-x-2">
+                          <Label className="text-sm">Choose Live TV Categories ({(liveCategories || []).length} total)</Label>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto mt-2 border rounded p-2">
+                            {(liveCategories || []).map(category => (
+                              <div key={category.category_id} className="flex items-center space-x-2 hover:bg-muted/50 p-1 rounded">
                                 <input
                                   type="checkbox"
                                   checked={!(layout.globalCategoryFilters?.find(f => f.categoryId === category.category_id)?.visible === false)}
@@ -841,10 +841,10 @@ export default function Admin() {
                       </div>
                       {layout.defaultSections.movies && (
                         <div className="pl-4 border-l-2 border-muted">
-                          <Label className="text-sm">Choose Movie Categories</Label>
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-32 overflow-y-auto mt-2">
-                            {(vodCategories || []).slice(0, 20).map(category => (
-                              <div key={category.category_id} className="flex items-center space-x-2">
+                          <Label className="text-sm">Choose Movie Categories ({(vodCategories || []).length} total)</Label>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto mt-2 border rounded p-2">
+                            {(vodCategories || []).map(category => (
+                              <div key={category.category_id} className="flex items-center space-x-2 hover:bg-muted/50 p-1 rounded">
                                 <input
                                   type="checkbox"
                                   checked={!(layout.globalCategoryFilters?.find(f => f.categoryId === category.category_id)?.visible === false)}
@@ -880,10 +880,10 @@ export default function Admin() {
                       </div>
                       {layout.defaultSections.series && (
                         <div className="pl-4 border-l-2 border-muted">
-                          <Label className="text-sm">Choose Series Categories</Label>
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-32 overflow-y-auto mt-2">
-                            {(seriesCategories || []).slice(0, 20).map(category => (
-                              <div key={category.category_id} className="flex items-center space-x-2">
+                          <Label className="text-sm">Choose Series Categories ({(seriesCategories || []).length} total)</Label>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto mt-2 border rounded p-2">
+                            {(seriesCategories || []).map(category => (
+                              <div key={category.category_id} className="flex items-center space-x-2 hover:bg-muted/50 p-1 rounded">
                                 <input
                                   type="checkbox"
                                   checked={!(layout.globalCategoryFilters?.find(f => f.categoryId === category.category_id)?.visible === false)}
