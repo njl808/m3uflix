@@ -144,6 +144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
   // Video streaming proxy route - handle GET, HEAD, and OPTIONS
   app.use('/api/stream/:type/:username/:password/:streamId.:extension', async (req, res) => {
     // Handle OPTIONS preflight request

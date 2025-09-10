@@ -47,12 +47,12 @@ export default function MovieDetail() {
         setLoading(true);
         setError(null);
         
-        const response = await fetch('/api/xtream/movie-info', {
+        const response = await fetch('/api/xtream/vod-info', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             config: api,
-            movieId: streamId
+            vodId: streamId
           })
         });
 
