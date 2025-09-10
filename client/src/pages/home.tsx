@@ -57,8 +57,16 @@ export default function Home() {
   const getFilteredContent = (content: ContentItem[]) => {
     return content.filter(item => {
       // First check global category filters - these override everything
-      const globalFilter = homepageLayout.globalCategoryFilters?.find((f: any) => f.categoryId === item.categoryId);
-      if (globalFilter && !globalFilter.visible) return false;
+      const globalFilters = homepageLayout.globalCategoryFilters || [];
+      
+      // If no global filters configured, show everything (good for new users)
+      if (globalFilters.length === 0) {
+        // Continue to regional filtering below
+      } else {
+        // If filters exist, only show explicitly selected categories
+        const globalFilter = globalFilters.find((f: any) => f.categoryId === item.categoryId);
+        if (!globalFilter || !globalFilter.visible) return false;
+      }
       
       // Then apply regional profile filters if active
       const activeProfile = homepageLayout.regionalProfiles?.find((p: any) => p.active);
