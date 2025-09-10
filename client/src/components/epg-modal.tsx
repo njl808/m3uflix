@@ -44,7 +44,7 @@ export function EPGModal({ isOpen, onClose, epgData, channelName, onWatch, isLoa
                 </div>
               ))}
             </div>
-          ) : epgData.length === 0 ? (
+          ) : !Array.isArray(epgData) || epgData.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No program guide available for this channel</p>
             </div>
