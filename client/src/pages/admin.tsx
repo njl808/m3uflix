@@ -738,21 +738,21 @@ export default function Admin() {
                             value={layout.heroContentId?.startsWith('movie-') ? layout.heroContentId : ''}
                             onValueChange={(value) => setLayout(prev => ({ 
                               ...prev, 
-                              heroContentId: value || undefined 
+                              heroContentId: value === 'none' ? undefined : value
                             }))}
                           >
                             <SelectTrigger data-testid="select-hero-movie">
                               <SelectValue placeholder={`Select a movie... (${(vodStreams || []).length} available)`} />
                             </SelectTrigger>
                             <SelectContent className="max-h-64">
-                              <SelectItem value="">None selected</SelectItem>
+                              <SelectItem value="none">None selected</SelectItem>
                               {(vodStreams || []).slice(0, 100).map(movie => (
                                 <SelectItem key={movie.stream_id} value={`movie-${movie.stream_id}`}>
                                   {movie.name}
                                 </SelectItem>
                               ))}
                               {(vodStreams || []).length > 100 && (
-                                <SelectItem value="" disabled>
+                                <SelectItem value="more-info" disabled>
                                   ... and {(vodStreams || []).length - 100} more (search to find specific titles)
                                 </SelectItem>
                               )}
@@ -765,21 +765,21 @@ export default function Admin() {
                             value={layout.heroContentId?.startsWith('series-') ? layout.heroContentId : ''}
                             onValueChange={(value) => setLayout(prev => ({ 
                               ...prev, 
-                              heroContentId: value || undefined 
+                              heroContentId: value === 'none' ? undefined : value
                             }))}
                           >
                             <SelectTrigger data-testid="select-hero-series">
                               <SelectValue placeholder={`Select a series... (${(seriesData || []).length} available)`} />
                             </SelectTrigger>
                             <SelectContent className="max-h-64">
-                              <SelectItem value="">None selected</SelectItem>
+                              <SelectItem value="none">None selected</SelectItem>
                               {(seriesData || []).slice(0, 100).map(series => (
                                 <SelectItem key={series.series_id} value={`series-${series.series_id}`}>
                                   {series.name}
                                 </SelectItem>
                               ))}
                               {(seriesData || []).length > 100 && (
-                                <SelectItem value="" disabled>
+                                <SelectItem value="more-info" disabled>
                                   ... and {(seriesData || []).length - 100} more (search to find specific titles)
                                 </SelectItem>
                               )}
