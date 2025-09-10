@@ -464,11 +464,7 @@ export default function Home() {
           saveConfig(config);
           setIsSetupOpen(false);
         }}
-        onClose={() => {
-          if (config) {
-            setIsSetupOpen(false);
-          }
-        }}
+        onClose={() => setIsSetupOpen(false)}
       />
 
 

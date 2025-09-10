@@ -21,51 +21,88 @@ export function HeroSection({ featuredContent, onPlay, onAddToList }: HeroSectio
   const content = featuredContent || defaultContent;
 
   return (
-    <section className="relative h-96 md:h-[500px] overflow-hidden" data-testid="hero-section">
-      <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-transparent z-10"></div>
-      <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent z-10"></div>
-      
-      {content.poster && (
-        <img 
-          src={content.poster} 
-          alt={content.title}
-          className="w-full h-full object-cover"
-          data-testid="hero-background"
-        />
-      )}
-      
-      <div className="absolute inset-0 z-20 flex items-center">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-          <div className="max-w-lg">
-            <h1 className="text-4xl md:text-6xl font-bold mb-4" data-testid="hero-title">
-              {content.title}
-            </h1>
-            {content.description && (
-              <p className="text-lg md:text-xl text-muted-foreground mb-6" data-testid="hero-description">
-                {content.description}
-              </p>
-            )}
-            <div className="flex space-x-4">
-              {featuredContent && (
-                <Button 
-                  className="bg-primary text-primary-foreground px-8 py-3 font-semibold hover:bg-primary/90"
-                  onClick={() => onPlay(content)}
-                  data-testid="button-play"
-                >
-                  <Play className="w-5 h-5 mr-2" />
-                  Play
-                </Button>
+    <section className="bg-background/50 py-8 px-4 sm:px-6 lg:px-8" data-testid="hero-section">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col md:flex-row gap-8 items-start">
+          {/* Box Cover / Poster */}
+          <div className="flex-shrink-0">
+            <div className="relative group">
+              {content.poster ? (
+                <img 
+                  src={content.poster} 
+                  alt={content.title}
+                  className="w-64 h-96 md:w-72 md:h-[432px] object-cover rounded-xl shadow-2xl border border-border/50"
+                  data-testid="hero-poster"
+                />
+              ) : (
+                <div className="w-64 h-96 md:w-72 md:h-[432px] bg-muted rounded-xl shadow-2xl border border-border/50 flex items-center justify-center">
+                  <div className="text-center text-muted-foreground">
+                    <div className="text-4xl mb-2">📺</div>
+                    <div className="text-sm">No Image</div>
+                  </div>
+                </div>
               )}
+              <div className="absolute inset-0 bg-black/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+            </div>
+          </div>
+
+          {/* Content Info */}
+          <div className="flex-1 min-w-0 pt-4">
+            <div className="space-y-6">
+              <div>
+                <h1 className="text-3xl md:text-5xl font-bold text-foreground mb-3" data-testid="hero-title">
+                  {content.title}
+                </h1>
+                <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+                  <span className="capitalize bg-primary/10 text-primary px-2 py-1 rounded text-xs font-medium">
+                    {content.type === 'live' ? 'Live TV' : content.type === 'movie' ? 'Movie' : 'TV Series'}
+                  </span>
+                  {content.categoryId && content.categoryId !== '0' && (
+                    <span className="text-muted-foreground">Category {content.categoryId}</span>
+                  )}
+                </div>
+              </div>
+
+              {content.description && (
+                <div>
+                  <p className="text-base md:text-lg text-muted-foreground leading-relaxed" data-testid="hero-description">
+                    {content.description}
+                  </p>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                {featuredContent && (
+                  <Button 
+                    className="bg-primary text-primary-foreground px-8 py-3 text-base font-semibold hover:bg-primary/90 shadow-lg"
+                    onClick={() => onPlay(content)}
+                    data-testid="button-play"
+                  >
+                    <Play className="w-5 h-5 mr-2" />
+                    Play Now
+                  </Button>
+                )}
+                {featuredContent && (
+                  <Button 
+                    variant="outline"
+                    className="px-8 py-3 text-base font-semibold border-2 hover:bg-muted/50"
+                    onClick={() => onAddToList(content)}
+                    data-testid="button-add-list"
+                  >
+                    <Plus className="w-5 h-5 mr-2" />
+                    Add to My List
+                  </Button>
+                )}
+              </div>
+
+              {/* Additional Info */}
               {featuredContent && (
-                <Button 
-                  variant="secondary"
-                  className="px-8 py-3 font-semibold"
-                  onClick={() => onAddToList(content)}
-                  data-testid="button-add-list"
-                >
-                  <Plus className="w-5 h-5 mr-2" />
-                  My List
-                </Button>
+                <div className="pt-4 border-t border-border/50">
+                  <p className="text-sm text-muted-foreground">
+                    Featured content • Currently cycling through selected categories
+                  </p>
+                </div>
               )}
             </div>
           </div>
