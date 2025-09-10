@@ -4,7 +4,6 @@ import { Navigation } from "@/components/navigation";
 import { HeroSection } from "@/components/hero-section";
 import { ContentGrid } from "@/components/content-grid";
 import { SetupModal } from "@/components/setup-modal";
-import { VideoPlayer } from "@/components/video-player";
 import { EPGModal } from "@/components/epg-modal";
 import { Button } from "@/components/ui/button";
 import { useXtreamConfig, useXtreamAPI, useAuthentication, useLiveStreams, useVODStreams, useSeries, useCategories, useEPG, useFavorites, useSearch } from "@/hooks/use-xtream-api";
@@ -110,11 +109,6 @@ export default function Home() {
     }
   };
 
-  const handleClosePlayer = () => {
-    setCurrentContent(null);
-    setStreamUrl('');
-    setSelectedStreamId(null);
-  };
 
   const handleSectionChange = (section: string) => {
     setCurrentSection(section);
@@ -275,19 +269,12 @@ export default function Home() {
         }}
       />
 
-      {currentContent && (
-        <VideoPlayer
-          content={currentContent}
-          streamUrl={streamUrl}
-          onClose={handleClosePlayer}
-        />
-      )}
 
       <EPGModal
         isOpen={epgModalOpen}
         onClose={() => setEpgModalOpen(false)}
         epgData={epgData || []}
-        channelName={currentContent?.title || ''}
+        channelName=""
         onWatch={(programId) => {
           console.log('Watch program:', programId);
           setEpgModalOpen(false);
@@ -300,9 +287,7 @@ export default function Home() {
         className="fixed inset-0 pointer-events-none"
         onKeyDown={(e) => {
           if (e.key === 'Escape') {
-            if (currentContent) {
-              handleClosePlayer();
-            } else if (isSetupOpen && config) {
+            if (isSetupOpen && config) {
               setIsSetupOpen(false);
             } else if (epgModalOpen) {
               setEpgModalOpen(false);
