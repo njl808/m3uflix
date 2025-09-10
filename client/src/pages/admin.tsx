@@ -346,13 +346,13 @@ export default function Admin() {
             : filter
         );
       } else {
-        // Add new filter as disabled (since default is visible)
+        // Add new filter as enabled (since default is now hidden)
         const categoryName = allCategories?.find(c => c.category_id === categoryId)?.category_name || 'Unknown';
         updatedFilters = [...currentFilters, {
           categoryId,
           categoryName,
           type,
-          visible: false,
+          visible: true,  // Changed: now we add as visible when user clicks
           keywords: []
         }];
       }
@@ -1061,14 +1061,79 @@ export default function Admin() {
                         />
                       </div>
                       {layout.defaultSections.live && (
-                        <div className="pl-4 border-l-2 border-muted">
-                          <Label className="text-sm">Choose Live TV Categories ({(liveCategories || []).length} total)</Label>
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto mt-2 border rounded p-2">
+                        <div className="pl-4 border-l-2 border-muted space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm">Choose Live TV Categories ({(liveCategories || []).length} total)</Label>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const allIds = (liveCategories || []).map(cat => cat.category_id);
+                                  const newFilters = allIds.map(id => ({
+                                    categoryId: id,
+                                    categoryName: (liveCategories || []).find(c => c.category_id === id)?.category_name || 'Unknown',
+                                    type: 'live' as const,
+                                    visible: true,
+                                    keywords: []
+                                  }));
+                                  setLayout(prev => ({
+                                    ...prev,
+                                    globalCategoryFilters: [
+                                      ...(prev.globalCategoryFilters || []).filter(f => f.type !== 'live'),
+                                      ...newFilters
+                                    ]
+                                  }));
+                                }}
+                                data-testid="select-all-live"
+                              >
+                                All
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const topIds = (liveCategories || []).slice(0, 10).map(cat => cat.category_id);
+                                  const newFilters = topIds.map(id => ({
+                                    categoryId: id,
+                                    categoryName: (liveCategories || []).find(c => c.category_id === id)?.category_name || 'Unknown',
+                                    type: 'live' as const,
+                                    visible: true,
+                                    keywords: []
+                                  }));
+                                  setLayout(prev => ({
+                                    ...prev,
+                                    globalCategoryFilters: [
+                                      ...(prev.globalCategoryFilters || []).filter(f => f.type !== 'live'),
+                                      ...newFilters
+                                    ]
+                                  }));
+                                }}
+                                data-testid="select-top-10-live"
+                              >
+                                Top 10
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setLayout(prev => ({
+                                    ...prev,
+                                    globalCategoryFilters: (prev.globalCategoryFilters || []).filter(f => f.type !== 'live')
+                                  }));
+                                }}
+                                data-testid="clear-all-live"
+                              >
+                                Clear
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto border rounded p-2">
                             {(liveCategories || []).map(category => (
                               <div key={category.category_id} className="flex items-center space-x-2 hover:bg-muted/50 p-1 rounded">
                                 <input
                                   type="checkbox"
-                                  checked={!(layout.globalCategoryFilters?.find(f => f.categoryId === category.category_id)?.visible === false)}
+                                  checked={layout.globalCategoryFilters?.find(f => f.categoryId === category.category_id)?.visible === true}
                                   onChange={() => toggleGlobalCategory(category.category_id, 'live')}
                                   className="text-xs"
                                   data-testid={`live-category-${category.category_id}`}
@@ -1077,6 +1142,9 @@ export default function Admin() {
                               </div>
                             ))}
                           </div>
+                          <p className="text-xs text-muted-foreground">
+                            Selected {(layout.globalCategoryFilters || []).filter(f => f.type === 'live' && f.visible).length} live categories
+                          </p>
                         </div>
                       )}
                     </div>
@@ -1100,14 +1168,79 @@ export default function Admin() {
                         />
                       </div>
                       {layout.defaultSections.movies && (
-                        <div className="pl-4 border-l-2 border-muted">
-                          <Label className="text-sm">Choose Movie Categories ({(vodCategories || []).length} total)</Label>
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto mt-2 border rounded p-2">
+                        <div className="pl-4 border-l-2 border-muted space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm">Choose Movie Categories ({(vodCategories || []).length} total)</Label>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const allIds = (vodCategories || []).map(cat => cat.category_id);
+                                  const newFilters = allIds.map(id => ({
+                                    categoryId: id,
+                                    categoryName: (vodCategories || []).find(c => c.category_id === id)?.category_name || 'Unknown',
+                                    type: 'movie' as const,
+                                    visible: true,
+                                    keywords: []
+                                  }));
+                                  setLayout(prev => ({
+                                    ...prev,
+                                    globalCategoryFilters: [
+                                      ...(prev.globalCategoryFilters || []).filter(f => f.type !== 'movie'),
+                                      ...newFilters
+                                    ]
+                                  }));
+                                }}
+                                data-testid="select-all-movies"
+                              >
+                                All
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const topIds = (vodCategories || []).slice(0, 10).map(cat => cat.category_id);
+                                  const newFilters = topIds.map(id => ({
+                                    categoryId: id,
+                                    categoryName: (vodCategories || []).find(c => c.category_id === id)?.category_name || 'Unknown',
+                                    type: 'movie' as const,
+                                    visible: true,
+                                    keywords: []
+                                  }));
+                                  setLayout(prev => ({
+                                    ...prev,
+                                    globalCategoryFilters: [
+                                      ...(prev.globalCategoryFilters || []).filter(f => f.type !== 'movie'),
+                                      ...newFilters
+                                    ]
+                                  }));
+                                }}
+                                data-testid="select-top-10-movies"
+                              >
+                                Top 10
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setLayout(prev => ({
+                                    ...prev,
+                                    globalCategoryFilters: (prev.globalCategoryFilters || []).filter(f => f.type !== 'movie')
+                                  }));
+                                }}
+                                data-testid="clear-all-movies"
+                              >
+                                Clear
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto border rounded p-2">
                             {(vodCategories || []).map(category => (
                               <div key={category.category_id} className="flex items-center space-x-2 hover:bg-muted/50 p-1 rounded">
                                 <input
                                   type="checkbox"
-                                  checked={!(layout.globalCategoryFilters?.find(f => f.categoryId === category.category_id)?.visible === false)}
+                                  checked={layout.globalCategoryFilters?.find(f => f.categoryId === category.category_id)?.visible === true}
                                   onChange={() => toggleGlobalCategory(category.category_id, 'movie')}
                                   className="text-xs"
                                   data-testid={`movie-category-${category.category_id}`}
@@ -1116,6 +1249,9 @@ export default function Admin() {
                               </div>
                             ))}
                           </div>
+                          <p className="text-xs text-muted-foreground">
+                            Selected {(layout.globalCategoryFilters || []).filter(f => f.type === 'movie' && f.visible).length} movie categories
+                          </p>
                         </div>
                       )}
                     </div>
@@ -1139,14 +1275,79 @@ export default function Admin() {
                         />
                       </div>
                       {layout.defaultSections.series && (
-                        <div className="pl-4 border-l-2 border-muted">
-                          <Label className="text-sm">Choose Series Categories ({(seriesCategories || []).length} total)</Label>
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto mt-2 border rounded p-2">
+                        <div className="pl-4 border-l-2 border-muted space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm">Choose Series Categories ({(seriesCategories || []).length} total)</Label>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const allIds = (seriesCategories || []).map(cat => cat.category_id);
+                                  const newFilters = allIds.map(id => ({
+                                    categoryId: id,
+                                    categoryName: (seriesCategories || []).find(c => c.category_id === id)?.category_name || 'Unknown',
+                                    type: 'series' as const,
+                                    visible: true,
+                                    keywords: []
+                                  }));
+                                  setLayout(prev => ({
+                                    ...prev,
+                                    globalCategoryFilters: [
+                                      ...(prev.globalCategoryFilters || []).filter(f => f.type !== 'series'),
+                                      ...newFilters
+                                    ]
+                                  }));
+                                }}
+                                data-testid="select-all-series"
+                              >
+                                All
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const topIds = (seriesCategories || []).slice(0, 10).map(cat => cat.category_id);
+                                  const newFilters = topIds.map(id => ({
+                                    categoryId: id,
+                                    categoryName: (seriesCategories || []).find(c => c.category_id === id)?.category_name || 'Unknown',
+                                    type: 'series' as const,
+                                    visible: true,
+                                    keywords: []
+                                  }));
+                                  setLayout(prev => ({
+                                    ...prev,
+                                    globalCategoryFilters: [
+                                      ...(prev.globalCategoryFilters || []).filter(f => f.type !== 'series'),
+                                      ...newFilters
+                                    ]
+                                  }));
+                                }}
+                                data-testid="select-top-10-series"
+                              >
+                                Top 10
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setLayout(prev => ({
+                                    ...prev,
+                                    globalCategoryFilters: (prev.globalCategoryFilters || []).filter(f => f.type !== 'series')
+                                  }));
+                                }}
+                                data-testid="clear-all-series"
+                              >
+                                Clear
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto border rounded p-2">
                             {(seriesCategories || []).map(category => (
                               <div key={category.category_id} className="flex items-center space-x-2 hover:bg-muted/50 p-1 rounded">
                                 <input
                                   type="checkbox"
-                                  checked={!(layout.globalCategoryFilters?.find(f => f.categoryId === category.category_id)?.visible === false)}
+                                  checked={layout.globalCategoryFilters?.find(f => f.categoryId === category.category_id)?.visible === true}
                                   onChange={() => toggleGlobalCategory(category.category_id, 'series')}
                                   className="text-xs"
                                   data-testid={`series-category-${category.category_id}`}
@@ -1155,6 +1356,9 @@ export default function Admin() {
                               </div>
                             ))}
                           </div>
+                          <p className="text-xs text-muted-foreground">
+                            Selected {(layout.globalCategoryFilters || []).filter(f => f.type === 'series' && f.visible).length} series categories
+                          </p>
                         </div>
                       )}
                     </div>
