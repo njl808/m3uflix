@@ -332,6 +332,39 @@ export default function Admin() {
     }));
   };
 
+  const toggleGlobalCategory = (categoryId: string, type: 'live' | 'movie' | 'series') => {
+    console.log('toggleGlobalCategory called:', categoryId, type);
+    setLayout(prev => {
+      const currentFilters = prev.globalCategoryFilters || [];
+      const existingFilter = currentFilters.find(f => f.categoryId === categoryId);
+      
+      let updatedFilters;
+      if (existingFilter) {
+        // Toggle existing filter
+        updatedFilters = currentFilters.map(filter =>
+          filter.categoryId === categoryId 
+            ? { ...filter, visible: !filter.visible }
+            : filter
+        );
+      } else {
+        // Add new filter as disabled (since default is visible)
+        const categoryName = allCategories?.find(c => c.category_id === categoryId)?.category_name || 'Unknown';
+        updatedFilters = [...currentFilters, {
+          categoryId,
+          categoryName,
+          type,
+          visible: false,
+          keywords: []
+        }];
+      }
+
+      return {
+        ...prev,
+        globalCategoryFilters: updatedFilters
+      };
+    });
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -519,7 +552,11 @@ export default function Admin() {
                         <div key={category.category_id} className="flex items-center justify-between p-2 border rounded">
                           <span className="text-sm">{category.category_name}</span>
                           <Switch
-                            checked={true}
+                            checked={layout.globalCategoryFilters?.find(f => f.categoryId === category.category_id)?.visible ?? true}
+                            onCheckedChange={(checked) => {
+                              console.log('Toggle live category:', category.category_id, checked);
+                              toggleGlobalCategory(category.category_id, 'live');
+                            }}
                             data-testid={`toggle-live-${category.category_id}`}
                           />
                         </div>
@@ -537,7 +574,11 @@ export default function Admin() {
                         <div key={category.category_id} className="flex items-center justify-between p-2 border rounded">
                           <span className="text-sm">{category.category_name}</span>
                           <Switch
-                            checked={true}
+                            checked={layout.globalCategoryFilters?.find(f => f.categoryId === category.category_id)?.visible ?? true}
+                            onCheckedChange={(checked) => {
+                              console.log('Toggle movie category:', category.category_id, checked);
+                              toggleGlobalCategory(category.category_id, 'movie');
+                            }}
                             data-testid={`toggle-movie-${category.category_id}`}
                           />
                         </div>
@@ -555,7 +596,11 @@ export default function Admin() {
                         <div key={category.category_id} className="flex items-center justify-between p-2 border rounded">
                           <span className="text-sm">{category.category_name}</span>
                           <Switch
-                            checked={true}
+                            checked={layout.globalCategoryFilters?.find(f => f.categoryId === category.category_id)?.visible ?? true}
+                            onCheckedChange={(checked) => {
+                              console.log('Toggle series category:', category.category_id, checked);
+                              toggleGlobalCategory(category.category_id, 'series');
+                            }}
                             data-testid={`toggle-series-${category.category_id}`}
                           />
                         </div>
