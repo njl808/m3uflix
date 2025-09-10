@@ -237,12 +237,15 @@ export default function Admin() {
     console.log('activateProfile called with:', profileId);
     setLayout(prev => {
       console.log('Current layout before update:', prev);
+      const currentProfile = prev.regionalProfiles?.find(p => p.id === profileId);
+      const isCurrentlyActive = currentProfile?.active;
+      
       const updated = {
         ...prev,
-        activeProfile: profileId,
+        activeProfile: isCurrentlyActive ? undefined : profileId,
         regionalProfiles: (prev.regionalProfiles || []).map(profile => ({
           ...profile,
-          active: profile.id === profileId
+          active: isCurrentlyActive ? false : profile.id === profileId
         }))
       };
       console.log('Updated layout:', updated);
