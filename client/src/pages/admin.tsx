@@ -12,20 +12,40 @@ import { Textarea } from '@/components/ui/textarea';
 import { 
   ArrowLeft, Settings, Home, Grid, List, Eye, EyeOff, 
   Plus, Trash2, Edit, Save, RotateCcw, Move, 
-  ChevronUp, ChevronDown, Layout, Palette 
+  ChevronUp, ChevronDown, Layout, Palette, Shield, Users 
 } from 'lucide-react';
 import { ContentItem } from '@/types/xtream';
 import { useXtreamConfig, useXtreamAPI, useAuthentication, useLiveStreams, useVODStreams, useSeries, useCategories } from '@/hooks/use-xtream-api';
 
+interface CategoryFilter {
+  categoryId: string;
+  categoryName: string;
+  type: 'live' | 'movie' | 'series';
+  visible: boolean;
+  keywords: string[];
+}
+
+interface RegionalProfile {
+  id: string;
+  name: string;
+  description: string;
+  categoryFilters: CategoryFilter[];
+  keywordFilters: {
+    include: string[];
+    exclude: string[];
+  };
+  active: boolean;
+}
+
 interface CustomSection {
   id: string;
   title: string;
-  type: 'live' | 'movie' | 'series' | 'mixed' | 'custom';
-  contentIds: string[];
+  type: 'live' | 'movie' | 'series' | 'mixed' | 'category';
+  categoryIds: string[];
   visible: boolean;
   order: number;
   limit?: number;
-  categoryFilter?: string;
+  keywordFilter?: string;
 }
 
 interface HomepageLayout {
@@ -37,6 +57,9 @@ interface HomepageLayout {
     movies: boolean;
     series: boolean;
   };
+  regionalProfiles: RegionalProfile[];
+  activeProfile?: string;
+  globalCategoryFilters: CategoryFilter[];
   sectionOrder: string[];
 }
 
@@ -53,7 +76,7 @@ export default function Admin() {
   const { data: vodCategories } = useCategories(api, 'vod');
   const { data: seriesCategories } = useCategories(api, 'series');
 
-  const [activeTab, setActiveTab] = useState('homepage');
+  const [activeTab, setActiveTab] = useState('profiles');
   const [layout, setLayout] = useState<HomepageLayout>(() => {
     const saved = localStorage.getItem('iptv-homepage-layout');
     return saved ? JSON.parse(saved) : {
@@ -64,28 +87,46 @@ export default function Admin() {
         movies: true,
         series: true
       },
+      regionalProfiles: [
+        {
+          id: 'uk',
+          name: 'UK Channels',
+          description: 'British and UK-based content',
+          categoryFilters: [],
+          keywordFilters: {
+            include: ['uk', 'british', 'bbc', 'itv', 'channel 4', 'sky uk'],
+            exclude: ['xxx', 'adult', 'porn']
+          },
+          active: false
+        },
+        {
+          id: 'us',
+          name: 'USA Channels', 
+          description: 'American and US-based content',
+          categoryFilters: [],
+          keywordFilters: {
+            include: ['usa', 'us', 'american', 'nbc', 'cbs', 'abc', 'fox'],
+            exclude: ['xxx', 'adult', 'porn']
+          },
+          active: false
+        }
+      ],
+      globalCategoryFilters: [],
       sectionOrder: ['live', 'movies', 'series']
     };
   });
 
-  const [editingSection, setEditingSection] = useState<CustomSection | null>(null);
   const [newSectionName, setNewSectionName] = useState('');
-  const [selectedContent, setSelectedContent] = useState<string[]>([]);
-
-  // Content management state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedType, setSelectedType] = useState<'all' | 'live' | 'movie' | 'series'>('all');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(50);
-  const [bulkSelectMode, setBulkSelectMode] = useState(false);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [newProfileName, setNewProfileName] = useState('');
+  const [editingProfile, setEditingProfile] = useState<RegionalProfile | null>(null);
 
   // Save layout whenever it changes
   useEffect(() => {
     localStorage.setItem('iptv-homepage-layout', JSON.stringify(layout));
   }, [layout]);
 
-  // Combine all content for selection
+  // Combine all content for totals
   const allContent: ContentItem[] = [
     ...(liveStreams || []).map(stream => ({
       id: `live-${stream.stream_id}`,
@@ -115,16 +156,23 @@ export default function Admin() {
     }))
   ];
 
+  // Get all unique categories
+  const allCategories = [
+    ...(liveCategories || []),
+    ...(vodCategories || []),
+    ...(seriesCategories || [])
+  ];
+
   const goBack = () => setLocation('/');
 
   const createCustomSection = () => {
-    if (!newSectionName.trim()) return;
+    if (!newSectionName.trim() || selectedCategories.length === 0) return;
 
     const newSection: CustomSection = {
       id: `custom-${Date.now()}`,
       title: newSectionName,
-      type: 'custom',
-      contentIds: selectedContent,
+      type: 'category',
+      categoryIds: selectedCategories,
       visible: true,
       order: layout.customSections.length,
       limit: 20
@@ -136,7 +184,65 @@ export default function Admin() {
     }));
 
     setNewSectionName('');
-    setSelectedContent([]);
+    setSelectedCategories([]);
+  };
+
+  const createRegionalProfile = () => {
+    if (!newProfileName.trim()) return;
+
+    const newProfile: RegionalProfile = {
+      id: `profile-${Date.now()}`,
+      name: newProfileName,
+      description: `Custom profile: ${newProfileName}`,
+      categoryFilters: allCategories.map(cat => ({
+        categoryId: cat.category_id,
+        categoryName: cat.category_name,
+        type: cat.category_name.toLowerCase().includes('live') ? 'live' : 
+              cat.category_name.toLowerCase().includes('movie') ? 'movie' : 'series',
+        visible: true,
+        keywords: []
+      })),
+      keywordFilters: {
+        include: [],
+        exclude: ['xxx', 'adult', 'porn']
+      },
+      active: false
+    };
+
+    setLayout(prev => ({
+      ...prev,
+      regionalProfiles: [...prev.regionalProfiles, newProfile]
+    }));
+
+    setNewProfileName('');
+  };
+
+  const activateProfile = (profileId: string) => {
+    setLayout(prev => ({
+      ...prev,
+      activeProfile: profileId,
+      regionalProfiles: prev.regionalProfiles.map(profile => ({
+        ...profile,
+        active: profile.id === profileId
+      }))
+    }));
+  };
+
+  const toggleCategoryInProfile = (profileId: string, categoryId: string) => {
+    setLayout(prev => ({
+      ...prev,
+      regionalProfiles: prev.regionalProfiles.map(profile => 
+        profile.id === profileId ? {
+          ...profile,
+          categoryFilters: profile.categoryFilters.map(filter =>
+            filter.categoryId === categoryId ? {
+              ...filter,
+              visible: !filter.visible
+            } : filter
+          )
+        } : profile
+      )
+    }));
   };
 
   const deleteSection = (sectionId: string) => {
@@ -170,11 +276,11 @@ export default function Admin() {
     });
   };
 
-  const toggleContentSelection = (contentId: string) => {
-    setSelectedContent(prev => 
-      prev.includes(contentId) 
-        ? prev.filter(id => id !== contentId)
-        : [...prev, contentId]
+  const toggleCategorySelection = (categoryId: string) => {
+    setSelectedCategories(prev => 
+      prev.includes(categoryId) 
+        ? prev.filter(id => id !== categoryId)
+        : [...prev, categoryId]
     );
   };
 
@@ -187,66 +293,18 @@ export default function Admin() {
         movies: true,
         series: true
       },
+      regionalProfiles: [],
+      globalCategoryFilters: [],
       sectionOrder: ['live', 'movies', 'series']
     });
   };
 
-  const getContentById = (contentId: string) => {
-    return allContent.find(item => item.id === contentId);
-  };
-
-  // Filter and paginate content
-  const filteredContent = allContent.filter(item => {
-    // Search filter
-    if (searchQuery && !item.title.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
-    }
-    
-    // Type filter
-    if (selectedType !== 'all' && item.type !== selectedType) {
-      return false;
-    }
-    
-    // Category filter
-    if (selectedCategory !== 'all' && item.categoryId !== selectedCategory) {
-      return false;
-    }
-    
-    return true;
-  });
-
-  const totalPages = Math.ceil(filteredContent.length / pageSize);
-  const paginatedContent = filteredContent.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
-
-  // Get all unique categories
-  const allCategories = [
-    ...(liveCategories || []),
-    ...(vodCategories || []),
-    ...(seriesCategories || [])
-  ];
-
-  const toggleAllContent = () => {
-    if (bulkSelectMode) {
-      if (selectedContent.length === filteredContent.length) {
-        setSelectedContent([]);
-      } else {
-        setSelectedContent(filteredContent.map(item => item.id));
-      }
-    }
-  };
-
-  const selectContentByCategory = (categoryId: string) => {
-    const categoryContent = allContent
-      .filter(item => item.categoryId === categoryId)
-      .map(item => item.id);
-    
-    setSelectedContent(prev => [
-      ...prev.filter(id => !categoryContent.includes(id)),
-      ...categoryContent
-    ]);
+  const deleteProfile = (profileId: string) => {
+    setLayout(prev => ({
+      ...prev,
+      regionalProfiles: prev.regionalProfiles.filter(p => p.id !== profileId),
+      activeProfile: prev.activeProfile === profileId ? undefined : prev.activeProfile
+    }));
   };
 
   return (
@@ -265,12 +323,12 @@ export default function Admin() {
               Back to Player
             </Button>
             <div className="flex items-center gap-2">
-              <Settings className="w-5 h-5" />
-              <h1 className="text-xl font-semibold">M3U Admin Panel</h1>
+              <Shield className="w-5 h-5" />
+              <h1 className="text-xl font-semibold">M3U Category Manager</h1>
             </div>
           </div>
           <Badge variant="outline">
-            {allContent.length} Total Items
+            {allContent.length.toLocaleString()} Total Items • {allCategories.length} Categories
           </Badge>
         </div>
       </div>
@@ -278,17 +336,17 @@ export default function Admin() {
       <div className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="homepage" className="flex items-center gap-2">
-              <Home className="w-4 h-4" />
-              Homepage
+            <TabsTrigger value="profiles" className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Regional Profiles
+            </TabsTrigger>
+            <TabsTrigger value="categories" className="flex items-center gap-2">
+              <Grid className="w-4 h-4" />
+              Category Manager
             </TabsTrigger>
             <TabsTrigger value="sections" className="flex items-center gap-2">
-              <Grid className="w-4 h-4" />
-              Custom Sections
-            </TabsTrigger>
-            <TabsTrigger value="content" className="flex items-center gap-2">
               <List className="w-4 h-4" />
-              Content Manager
+              Custom Sections
             </TabsTrigger>
             <TabsTrigger value="layout" className="flex items-center gap-2">
               <Layout className="w-4 h-4" />
@@ -296,75 +354,176 @@ export default function Admin() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Homepage Configuration */}
-          <TabsContent value="homepage" className="space-y-6">
+          {/* Regional Profiles */}
+          <TabsContent value="profiles" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Home className="w-5 h-5" />
-                  Homepage Configuration
+                  <Users className="w-5 h-5" />
+                  Regional Profiles
                 </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Create country-specific or personalized content filters. Much more efficient than selecting 218k individual channels!
+                </p>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="show-hero">Show Hero Section</Label>
-                    <p className="text-sm text-muted-foreground">Display featured content at the top</p>
+                {/* Create New Profile */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="profile-name">Profile Name</Label>
+                    <Input
+                      id="profile-name"
+                      value={newProfileName}
+                      onChange={(e) => setNewProfileName(e.target.value)}
+                      placeholder="e.g., UK Only, Family Safe, Sports Only"
+                      data-testid="input-profile-name"
+                    />
                   </div>
-                  <Switch
-                    id="show-hero"
-                    checked={layout.showHero}
-                    onCheckedChange={(checked) => 
-                      setLayout(prev => ({ ...prev, showHero: checked }))
-                    }
-                    data-testid="toggle-hero"
-                  />
+                  <div className="flex items-end">
+                    <Button
+                      onClick={createRegionalProfile}
+                      disabled={!newProfileName.trim()}
+                      data-testid="button-create-profile"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Profile
+                    </Button>
+                  </div>
                 </div>
 
-                {layout.showHero && (
-                  <div className="space-y-2">
-                    <Label>Hero Content</Label>
-                    <Select
-                      value={layout.heroContentId || ''}
-                      onValueChange={(value) => 
-                        setLayout(prev => ({ ...prev, heroContentId: value }))
-                      }
-                    >
-                      <SelectTrigger data-testid="select-hero-content">
-                        <SelectValue placeholder="Select featured content" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {allContent.slice(0, 50).map(item => (
-                          <SelectItem key={item.id} value={item.id}>
-                            {item.title} ({item.type})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
+                {/* Existing Profiles */}
                 <div className="space-y-4">
-                  <Label>Default Sections</Label>
+                  {layout.regionalProfiles.map((profile) => (
+                    <Card key={profile.id} className={profile.active ? "ring-2 ring-primary" : ""}>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="text-lg">{profile.name}</CardTitle>
+                            <p className="text-sm text-muted-foreground">{profile.description}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={profile.active ? "default" : "outline"}>
+                              {profile.active ? "Active" : "Inactive"}
+                            </Badge>
+                            <Button
+                              size="sm"
+                              variant={profile.active ? "outline" : "default"}
+                              onClick={() => activateProfile(profile.id)}
+                              data-testid={`button-activate-${profile.id}`}
+                            >
+                              {profile.active ? "Deactivate" : "Activate"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => deleteProfile(profile.id)}
+                              data-testid={`button-delete-profile-${profile.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {/* Keywords */}
+                          <div>
+                            <Label className="text-sm font-medium">Include Keywords:</Label>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {profile.keywordFilters.include.map(keyword => (
+                                <Badge key={keyword} variant="secondary" className="text-xs">
+                                  +{keyword}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-sm font-medium">Exclude Keywords:</Label>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {profile.keywordFilters.exclude.map(keyword => (
+                                <Badge key={keyword} variant="destructive" className="text-xs">
+                                  -{keyword}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                          
+                          {/* Category Count */}
+                          <div className="text-sm text-muted-foreground">
+                            Categories: {profile.categoryFilters.filter(c => c.visible).length} of {profile.categoryFilters.length} enabled
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Category Manager */}
+          <TabsContent value="categories" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Category Overview</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Manage entire categories instead of individual channels. Perfect for your {allContent.length.toLocaleString()} item playlist!
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Live TV Categories */}
                   <div className="space-y-3">
-                    {Object.entries(layout.defaultSections).map(([key, enabled]) => (
-                      <div key={key} className="flex items-center justify-between">
-                        <span className="capitalize">{key} TV</span>
-                        <Switch
-                          checked={enabled}
-                          onCheckedChange={(checked) => 
-                            setLayout(prev => ({
-                              ...prev,
-                              defaultSections: {
-                                ...prev.defaultSections,
-                                [key]: checked
-                              }
-                            }))
-                          }
-                          data-testid={`toggle-${key}-section`}
-                        />
-                      </div>
-                    ))}
+                    <h3 className="font-medium flex items-center gap-2">
+                      Live TV Categories ({liveCategories?.length || 0})
+                    </h3>
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {liveCategories?.map(category => (
+                        <div key={category.category_id} className="flex items-center justify-between p-2 border rounded">
+                          <span className="text-sm">{category.category_name}</span>
+                          <Switch
+                            checked={true}
+                            data-testid={`toggle-live-${category.category_id}`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Movie Categories */}
+                  <div className="space-y-3">
+                    <h3 className="font-medium flex items-center gap-2">
+                      Movie Categories ({vodCategories?.length || 0})
+                    </h3>
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {vodCategories?.map(category => (
+                        <div key={category.category_id} className="flex items-center justify-between p-2 border rounded">
+                          <span className="text-sm">{category.category_name}</span>
+                          <Switch
+                            checked={true}
+                            data-testid={`toggle-movie-${category.category_id}`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Series Categories */}
+                  <div className="space-y-3">
+                    <h3 className="font-medium flex items-center gap-2">
+                      Series Categories ({seriesCategories?.length || 0})
+                    </h3>
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {seriesCategories?.map(category => (
+                        <div key={category.category_id} className="flex items-center justify-between p-2 border rounded">
+                          <span className="text-sm">{category.category_name}</span>
+                          <Switch
+                            checked={true}
+                            data-testid={`toggle-series-${category.category_id}`}
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -377,7 +536,7 @@ export default function Admin() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Plus className="w-5 h-5" />
-                  Create Custom Section
+                  Create Category-Based Section
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -388,15 +547,15 @@ export default function Admin() {
                       id="section-name"
                       value={newSectionName}
                       onChange={(e) => setNewSectionName(e.target.value)}
-                      placeholder="e.g., My Favorites, Kids Shows"
+                      placeholder="e.g., UK Sports, Kids Movies"
                       data-testid="input-section-name"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Selected Content ({selectedContent.length})</Label>
+                    <Label>Selected Categories ({selectedCategories.length})</Label>
                     <Button
                       onClick={createCustomSection}
-                      disabled={!newSectionName.trim() || selectedContent.length === 0}
+                      disabled={!newSectionName.trim() || selectedCategories.length === 0}
                       data-testid="button-create-section"
                     >
                       <Plus className="w-4 h-4 mr-2" />
@@ -404,10 +563,28 @@ export default function Admin() {
                     </Button>
                   </div>
                 </div>
+
+                {/* Category Selection */}
+                <div className="space-y-3">
+                  <Label>Select Categories for Section</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+                    {allCategories.map(category => (
+                      <div key={category.category_id} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedCategories.includes(category.category_id)}
+                          onChange={() => toggleCategorySelection(category.category_id)}
+                          data-testid={`checkbox-category-${category.category_id}`}
+                        />
+                        <span className="text-sm">{category.category_name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
-            {/* Existing Custom Sections */}
+            {/* Existing Sections */}
             <div className="space-y-4">
               {layout.customSections.map((section) => (
                 <Card key={section.id}>
@@ -451,17 +628,17 @@ export default function Admin() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap gap-2">
-                      {section.contentIds.slice(0, 10).map(contentId => {
-                        const content = getContentById(contentId);
-                        return content ? (
-                          <Badge key={contentId} variant="secondary">
-                            {content.title}
+                      {section.categoryIds.slice(0, 10).map(categoryId => {
+                        const category = allCategories.find(c => c.category_id === categoryId);
+                        return category ? (
+                          <Badge key={categoryId} variant="secondary">
+                            {category.category_name}
                           </Badge>
                         ) : null;
                       })}
-                      {section.contentIds.length > 10 && (
+                      {section.categoryIds.length > 10 && (
                         <Badge variant="outline">
-                          +{section.contentIds.length - 10} more
+                          +{section.categoryIds.length - 10} more
                         </Badge>
                       )}
                     </div>
@@ -469,203 +646,6 @@ export default function Admin() {
                 </Card>
               ))}
             </div>
-          </TabsContent>
-
-          {/* Content Manager */}
-          <TabsContent value="content" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  Content Selection
-                  <Badge variant="outline">
-                    {filteredContent.length.toLocaleString()} of {allContent.length.toLocaleString()} items
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Search and Filters */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="search-content">Search Content</Label>
-                    <Input
-                      id="search-content"
-                      value={searchQuery}
-                      onChange={(e) => {
-                        setSearchQuery(e.target.value);
-                        setCurrentPage(1);
-                      }}
-                      placeholder="Search by title..."
-                      data-testid="input-search-content"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Content Type</Label>
-                    <Select
-                      value={selectedType}
-                      onValueChange={(value: 'all' | 'live' | 'movie' | 'series') => {
-                        setSelectedType(value);
-                        setCurrentPage(1);
-                      }}
-                    >
-                      <SelectTrigger data-testid="select-content-type">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Types</SelectItem>
-                        <SelectItem value="live">Live TV</SelectItem>
-                        <SelectItem value="movie">Movies</SelectItem>
-                        <SelectItem value="series">Series</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Category</Label>
-                    <Select
-                      value={selectedCategory}
-                      onValueChange={(value) => {
-                        setSelectedCategory(value);
-                        setCurrentPage(1);
-                      }}
-                    >
-                      <SelectTrigger data-testid="select-content-category">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Categories</SelectItem>
-                        {allCategories.map(cat => (
-                          <SelectItem key={cat.category_id} value={cat.category_id}>
-                            {cat.category_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Selection Mode</Label>
-                    <div className="flex gap-2">
-                      <Button
-                        variant={bulkSelectMode ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setBulkSelectMode(!bulkSelectMode)}
-                        data-testid="button-bulk-mode"
-                      >
-                        Bulk Mode
-                      </Button>
-                      {bulkSelectMode && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={toggleAllContent}
-                          data-testid="button-select-all"
-                        >
-                          {selectedContent.length === filteredContent.length ? 'Deselect All' : 'Select All'}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quick Category Selection */}
-                {bulkSelectMode && (
-                  <div className="space-y-3">
-                    <Label>Quick Category Selection</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {allCategories.slice(0, 10).map(cat => (
-                        <Button
-                          key={cat.category_id}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => selectContentByCategory(cat.category_id)}
-                          data-testid={`button-select-category-${cat.category_id}`}
-                        >
-                          + {cat.category_name}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Selected Count */}
-                <div className="flex items-center justify-between bg-muted p-3 rounded">
-                  <span className="text-sm">
-                    Selected: <strong>{selectedContent.length.toLocaleString()}</strong> items
-                  </span>
-                  {selectedContent.length > 0 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedContent([])}
-                      data-testid="button-clear-selection"
-                    >
-                      Clear Selection
-                    </Button>
-                  )}
-                </div>
-
-                {/* Content List */}
-                <div className="space-y-2 max-h-96 overflow-y-auto border rounded p-4">
-                  {paginatedContent.map(item => (
-                    <div key={item.id} className="flex items-center justify-between p-2 hover:bg-muted rounded">
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={selectedContent.includes(item.id)}
-                          onChange={() => toggleContentSelection(item.id)}
-                          data-testid={`checkbox-content-${item.id}`}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium truncate">{item.title}</div>
-                          <div className="flex gap-2 mt-1">
-                            <Badge variant="outline" className="text-xs">{item.type}</Badge>
-                            {item.rating && (
-                              <Badge variant="secondary" className="text-xs">★ {item.rating}</Badge>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {filteredContent.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No content found matching your filters
-                    </div>
-                  )}
-                </div>
-
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-muted-foreground">
-                      Page {currentPage} of {totalPages} • Showing {paginatedContent.length} of {filteredContent.length.toLocaleString()} filtered items
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={currentPage === 1}
-                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                        data-testid="button-prev-page"
-                      >
-                        Previous
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={currentPage === totalPages}
-                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                        data-testid="button-next-page"
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           </TabsContent>
 
           {/* Layout Settings */}
@@ -678,6 +658,45 @@ export default function Admin() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="show-hero">Show Hero Section</Label>
+                    <p className="text-sm text-muted-foreground">Display featured content at the top</p>
+                  </div>
+                  <Switch
+                    id="show-hero"
+                    checked={layout.showHero}
+                    onCheckedChange={(checked) => 
+                      setLayout(prev => ({ ...prev, showHero: checked }))
+                    }
+                    data-testid="toggle-hero"
+                  />
+                </div>
+
+                <div className="space-y-4">
+                  <Label>Default Sections</Label>
+                  <div className="space-y-3">
+                    {Object.entries(layout.defaultSections).map(([key, enabled]) => (
+                      <div key={key} className="flex items-center justify-between">
+                        <span className="capitalize">{key} TV</span>
+                        <Switch
+                          checked={enabled}
+                          onCheckedChange={(checked) => 
+                            setLayout(prev => ({
+                              ...prev,
+                              defaultSections: {
+                                ...prev.defaultSections,
+                                [key]: checked
+                              }
+                            }))
+                          }
+                          data-testid={`toggle-${key}-section`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-medium">Reset to Default Layout</h3>
@@ -700,8 +719,10 @@ export default function Admin() {
                   <div className="text-sm space-y-2">
                     <p>• Hero Section: {layout.showHero ? 'Enabled' : 'Disabled'}</p>
                     <p>• Custom Sections: {layout.customSections.length}</p>
-                    <p>• Default Sections: {Object.values(layout.defaultSections).filter(Boolean).length}/3 enabled</p>
-                    <p>• Total Content: {allContent.length} items</p>
+                    <p>• Regional Profiles: {layout.regionalProfiles.length}</p>
+                    <p>• Active Profile: {layout.activeProfile || 'None'}</p>
+                    <p>• Total Content: {allContent.length.toLocaleString()} items</p>
+                    <p>• Total Categories: {allCategories.length}</p>
                   </div>
                 </div>
 
