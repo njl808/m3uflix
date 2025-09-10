@@ -322,11 +322,15 @@ export default function Player() {
 
   // Load stream when component mounts or stream changes
   useEffect(() => {
+    console.log('[PLAYER] Effect triggered - api:', !!api, 'streamId:', streamId, 'streamUrls.length:', streamUrls.length);
+    
     if (streamUrls.length > 0) {
       console.log('[PLAYER] Starting stream load:', streamUrls[0]);
       // Generate new load token to cancel any existing attempts
       loadTokenRef.current = Date.now();
       loadStream(0);
+    } else {
+      console.log('[PLAYER] No streamUrls available - api:', !!api, 'streamId:', streamId);
     }
     
     // Cleanup on unmount
@@ -336,7 +340,7 @@ export default function Player() {
         hlsRef.current = null;
       }
     };
-  }, [streamId, streamType]);
+  }, [api, streamId, streamType, streamUrls.length]); // Added api and streamUrls.length as dependencies
 
   const togglePlay = () => {
     if (!videoRef.current) return;
