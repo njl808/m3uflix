@@ -176,21 +176,6 @@ export default function Home() {
         onSearch={setSearchQuery}
       />
 
-      {/* Content Filter - Add before the main content */}
-      <div className="container mx-auto px-4 pt-4">
-        <div className="flex justify-end mb-4">
-          <ContentFilter
-            content={allContent}
-            categories={[
-              ...(liveCategories || []),
-              ...(vodCategories || []),
-              ...(seriesCategories || [])
-            ]}
-            onFilterChange={setFilteredContent}
-            onSettingsChange={setFilterSettings}
-          />
-        </div>
-      </div>
 
       <main className="pt-16">
         {currentSection === 'home' && !searchQuery && (
@@ -272,12 +257,28 @@ export default function Home() {
               />
             </>
           ) : (
-            <ContentGrid
-              title={getSectionTitle()}
-              content={getContentForSection()}
-              onContentClick={handlePlayContent}
-              isLoading={isLoading}
-            />
+            <div className="space-y-6">
+              {/* Content Filter Button */}
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold">{getSectionTitle()}</h2>
+                <ContentFilter
+                  content={allContent}
+                  categories={[
+                    ...(liveCategories || []),
+                    ...(vodCategories || []),
+                    ...(seriesCategories || [])
+                  ]}
+                  onFilterChange={setFilteredContent}
+                  onSettingsChange={setFilterSettings}
+                />
+              </div>
+              <ContentGrid
+                title=""
+                content={getContentForSection()}
+                onContentClick={handlePlayContent}
+                isLoading={isLoading}
+              />
+            </div>
           )}
         </div>
       </main>

@@ -80,7 +80,7 @@ export function ContentFilter({ content, categories, onFilterChange, onSettingsC
       }
 
       // Rating filter
-      if (item.rating && parseFloat(item.rating) > settings.maxRating) {
+      if (item.rating && parseFloat(item.rating.toString()) > settings.maxRating) {
         return false;
       }
 
@@ -150,7 +150,7 @@ export function ContentFilter({ content, categories, onFilterChange, onSettingsC
       const adultKeywords = ['xxx', 'adult', 'porn', 'sex', 'erotic', '18+'];
       if (adultKeywords.some(keyword => itemText.includes(keyword))) return false;
     }
-    if (item.rating && parseFloat(item.rating) > settings.maxRating) return false;
+    if (item.rating && parseFloat(item.rating.toString()) > settings.maxRating) return false;
     return true;
   }).length;
 
