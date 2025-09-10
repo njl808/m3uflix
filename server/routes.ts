@@ -298,7 +298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Build the original stream URL
       const streamUrl = `${serverUrl}/${type}/${username}/${password}/${streamId}.${extension}`;
 
-      console.log(`[VIDEO PROXY] Requesting: ${streamUrl}`);
+      console.log(`[VIDEO PROXY] Requesting: ${streamUrl.replace(password, '***')}`);
 
       // Add random delay to avoid CloudFlare rate limiting (1-3 seconds)
       const delay = Math.random() * 2000 + 1000; // 1000-3000ms
@@ -319,29 +319,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.setHeader('Accept-Ranges', 'bytes');
       }
 
-      // Forward the request to the actual stream with proper IPTV headers
-      // Anti-CloudFlare detection headers
-      const userAgents = [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'VLC/3.0.12 LibVLC/3.0.12', 
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15',
-        'Kodi/20.2 (Windows NT 10.0.19045; WOW64) App_Bitness/32 Version/20.2-(20.2.0)',
-        'Perfect Player IPTV'
-      ];
+      // Forward the request to the actual stream with stable IPTV headers
+      // Use stable User-Agent to avoid WAF fingerprint detection
+      const stableUserAgent = 'VLC/3.0.20 LibVLC/3.0.20';
       
       const headers: Record<string, string> = {
-        'User-Agent': userAgents[Math.floor(Math.random() * userAgents.length)],
+        'User-Agent': stableUserAgent,
         'Accept': extension === 'm3u8' ? 'application/vnd.apple.mpegurl,*/*' : '*/*',
+        'Accept-Language': 'en-US,en;q=0.9',
         'Connection': 'keep-alive',
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache',
-        'Sec-Fetch-Mode': 'cors',
-        'Sec-Fetch-Site': 'cross-site'
+        'Cache-Control': 'no-cache'
+        // Removed browser-only Sec-Fetch-* headers that trigger WAF
       };
 
-      // Add range header only for video files, not playlists
-      if (req.headers.range && extension !== 'm3u8') {
-        headers['Range'] = req.headers.range;
+      // Add range header for video files - CRITICAL for IPTV servers
+      if (extension !== 'm3u8') {
+        // Always send Range header for video files, IPTV servers expect it
+        headers['Range'] = req.headers.range || 'bytes=0-';
       }
 
       // Add referer if present
@@ -355,11 +349,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         abortController.abort();
       }, 60000); // Increased to 60 second timeout for large files
 
+      let streamResponse: Response;
+      let retryCount = 0;
+      const maxRetries = 2;
+
       try {
-        const streamResponse = await fetch(streamUrl, { 
+        // Handle HEAD requests properly
+        const fetchOptions: RequestInit = {
+          method: req.method, // Forward HEAD as HEAD, GET as GET
           headers,
           signal: abortController.signal
-        });
+        };
+
+        streamResponse = await fetch(streamUrl, fetchOptions);
+
+        // Retry logic for 406 errors with delay
+        while (streamResponse.status === 406 && retryCount < maxRetries) {
+          console.log(`[VIDEO PROXY] Got 406, retrying... (${retryCount + 1}/${maxRetries})`);
+          retryCount++;
+          
+          // Wait 1.2-1.8 seconds before retry
+          await new Promise(resolve => setTimeout(resolve, 1200 + Math.random() * 600));
+          
+          streamResponse = await fetch(streamUrl, fetchOptions);
+        }
 
         clearTimeout(timeoutId);
 
@@ -412,7 +425,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Set appropriate status code
         res.status(streamResponse.status);
 
-        // Pipe the stream to the response (for non-m3u8 files)
+        // Handle HEAD requests - only send headers, no body
+        if (req.method === 'HEAD') {
+          res.status(streamResponse.status);
+          return;
+        }
+
+        // Pipe the stream to the response (for non-m3u8 files)  
         if (streamResponse.body) {
           const reader = streamResponse.body.getReader();
 
