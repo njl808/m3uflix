@@ -79,7 +79,7 @@ export default function Admin() {
   const [activeTab, setActiveTab] = useState('profiles');
   const [layout, setLayout] = useState<HomepageLayout>(() => {
     const saved = localStorage.getItem('iptv-homepage-layout');
-    return saved ? JSON.parse(saved) : {
+    const defaultLayout = {
       showHero: true,
       customSections: [],
       defaultSections: {
@@ -114,6 +114,20 @@ export default function Admin() {
       globalCategoryFilters: [],
       sectionOrder: ['live', 'movies', 'series']
     };
+    
+    if (saved) {
+      const parsedLayout = JSON.parse(saved);
+      // Ensure all required properties exist
+      return {
+        ...defaultLayout,
+        ...parsedLayout,
+        regionalProfiles: parsedLayout.regionalProfiles || defaultLayout.regionalProfiles,
+        globalCategoryFilters: parsedLayout.globalCategoryFilters || [],
+        customSections: parsedLayout.customSections || []
+      };
+    }
+    
+    return defaultLayout;
   });
 
   const [newSectionName, setNewSectionName] = useState('');
@@ -393,7 +407,7 @@ export default function Admin() {
 
                 {/* Existing Profiles */}
                 <div className="space-y-4">
-                  {layout.regionalProfiles.map((profile) => (
+                  {(layout.regionalProfiles || []).map((profile) => (
                     <Card key={profile.id} className={profile.active ? "ring-2 ring-primary" : ""}>
                       <CardHeader>
                         <div className="flex items-center justify-between">
@@ -478,7 +492,7 @@ export default function Admin() {
                       Live TV Categories ({liveCategories?.length || 0})
                     </h3>
                     <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {liveCategories?.map(category => (
+                      {(liveCategories || []).map(category => (
                         <div key={category.category_id} className="flex items-center justify-between p-2 border rounded">
                           <span className="text-sm">{category.category_name}</span>
                           <Switch
@@ -496,7 +510,7 @@ export default function Admin() {
                       Movie Categories ({vodCategories?.length || 0})
                     </h3>
                     <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {vodCategories?.map(category => (
+                      {(vodCategories || []).map(category => (
                         <div key={category.category_id} className="flex items-center justify-between p-2 border rounded">
                           <span className="text-sm">{category.category_name}</span>
                           <Switch
@@ -514,7 +528,7 @@ export default function Admin() {
                       Series Categories ({seriesCategories?.length || 0})
                     </h3>
                     <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {seriesCategories?.map(category => (
+                      {(seriesCategories || []).map(category => (
                         <div key={category.category_id} className="flex items-center justify-between p-2 border rounded">
                           <span className="text-sm">{category.category_name}</span>
                           <Switch
@@ -568,7 +582,7 @@ export default function Admin() {
                 <div className="space-y-3">
                   <Label>Select Categories for Section</Label>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
-                    {allCategories.map(category => (
+                    {(allCategories || []).map(category => (
                       <div key={category.category_id} className="flex items-center space-x-2">
                         <input
                           type="checkbox"
@@ -586,7 +600,7 @@ export default function Admin() {
 
             {/* Existing Sections */}
             <div className="space-y-4">
-              {layout.customSections.map((section) => (
+              {(layout.customSections || []).map((section) => (
                 <Card key={section.id}>
                   <CardHeader>
                     <div className="flex items-center justify-between">
@@ -628,17 +642,17 @@ export default function Admin() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap gap-2">
-                      {section.categoryIds.slice(0, 10).map(categoryId => {
-                        const category = allCategories.find(c => c.category_id === categoryId);
+                      {(section.categoryIds || []).slice(0, 10).map(categoryId => {
+                        const category = (allCategories || []).find(c => c.category_id === categoryId);
                         return category ? (
                           <Badge key={categoryId} variant="secondary">
                             {category.category_name}
                           </Badge>
                         ) : null;
                       })}
-                      {section.categoryIds.length > 10 && (
+                      {(section.categoryIds || []).length > 10 && (
                         <Badge variant="outline">
-                          +{section.categoryIds.length - 10} more
+                          +{(section.categoryIds || []).length - 10} more
                         </Badge>
                       )}
                     </div>
@@ -718,11 +732,11 @@ export default function Admin() {
                   <h3 className="font-medium">Current Configuration</h3>
                   <div className="text-sm space-y-2">
                     <p>• Hero Section: {layout.showHero ? 'Enabled' : 'Disabled'}</p>
-                    <p>• Custom Sections: {layout.customSections.length}</p>
-                    <p>• Regional Profiles: {layout.regionalProfiles.length}</p>
+                    <p>• Custom Sections: {(layout.customSections || []).length}</p>
+                    <p>• Regional Profiles: {(layout.regionalProfiles || []).length}</p>
                     <p>• Active Profile: {layout.activeProfile || 'None'}</p>
                     <p>• Total Content: {allContent.length.toLocaleString()} items</p>
-                    <p>• Total Categories: {allCategories.length}</p>
+                    <p>• Total Categories: {(allCategories || []).length}</p>
                   </div>
                 </div>
 
