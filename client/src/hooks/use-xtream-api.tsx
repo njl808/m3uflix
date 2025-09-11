@@ -48,7 +48,7 @@ export function useAuthentication(api: XtreamAPI | null) {
 
 export function useLiveStreams(api: XtreamAPI | null, categoryId?: string) {
   return useQuery({
-    queryKey: ['/api/live-streams', api?.serverUrl, categoryId],
+    queryKey: ['/api/live-streams', api?.serverUrl, categoryId ?? 'all'],
     queryFn: () => api?.getLiveStreams(categoryId),
     enabled: !!api,
     staleTime: 2 * 60 * 1000, // 2 minutes
@@ -57,7 +57,7 @@ export function useLiveStreams(api: XtreamAPI | null, categoryId?: string) {
 
 export function useVODStreams(api: XtreamAPI | null, categoryId?: string) {
   return useQuery({
-    queryKey: ['/api/vod-streams', api?.serverUrl, categoryId],
+    queryKey: ['/api/vod-streams', api?.serverUrl, categoryId ?? 'all'],
     queryFn: () => api?.getVODStreams(categoryId),
     enabled: !!api,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -66,7 +66,7 @@ export function useVODStreams(api: XtreamAPI | null, categoryId?: string) {
 
 export function useSeries(api: XtreamAPI | null, categoryId?: string) {
   return useQuery({
-    queryKey: ['/api/series', api?.serverUrl, categoryId],
+    queryKey: ['/api/series', api?.serverUrl, categoryId ?? 'all'],
     queryFn: () => api?.getSeries(categoryId),
     enabled: !!api,
     staleTime: 5 * 60 * 1000, // 5 minutes

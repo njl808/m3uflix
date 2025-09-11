@@ -49,10 +49,11 @@ export class XtreamAPI {
   }
 
   async getLiveStreams(categoryId?: string): Promise<XtreamStream[]> {
-    return this.makeProxyRequest('streams', { 
-      action: 'get_live_streams', 
-      categoryId 
-    });
+    const data: any = { action: 'get_live_streams' };
+    if (categoryId) {
+      data.categoryId = categoryId;
+    }
+    return this.makeProxyRequest('streams', data);
   }
 
   async getVODCategories(): Promise<XtreamCategory[]> {
@@ -60,10 +61,11 @@ export class XtreamAPI {
   }
 
   async getVODStreams(categoryId?: string): Promise<XtreamVOD[]> {
-    return this.makeProxyRequest('streams', { 
-      action: 'get_vod_streams', 
-      categoryId 
-    });
+    const data: any = { action: 'get_vod_streams' };
+    if (categoryId) {
+      data.categoryId = categoryId;
+    }
+    return this.makeProxyRequest('streams', data);
   }
 
   async getSeriesCategories(): Promise<XtreamCategory[]> {
@@ -71,10 +73,11 @@ export class XtreamAPI {
   }
 
   async getSeries(categoryId?: string): Promise<XtreamSeries[]> {
-    return this.makeProxyRequest('streams', { 
-      action: 'get_series', 
-      categoryId 
-    });
+    const data: any = { action: 'get_series' };
+    if (categoryId) {
+      data.categoryId = categoryId;
+    }
+    return this.makeProxyRequest('streams', data);
   }
 
   async getEPG(streamId: number): Promise<XtreamEPG[]> {
