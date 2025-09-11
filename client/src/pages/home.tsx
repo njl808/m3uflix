@@ -163,7 +163,7 @@ export default function Home() {
     
     return content.filter(item => {
       const f = typeFilters.find(f => String(f.categoryId) === String(item.categoryId));
-      return f ? f.visible : true; // default visible
+      return f ? f.visible : false; // default hidden for performance
     });
   }, [allLiveStreams, tabCategoryFilters]);
 
@@ -195,7 +195,7 @@ export default function Home() {
     
     return content.filter(item => {
       const f = typeFilters.find(f => String(f.categoryId) === String(item.categoryId));
-      return f ? f.visible : true; // default visible
+      return f ? f.visible : false; // default hidden for performance
     });
   }, [allVodStreams, tabCategoryFilters]);
 
@@ -231,7 +231,7 @@ export default function Home() {
     
     return content.filter(item => {
       const f = typeFilters.find(f => String(f.categoryId) === String(item.categoryId));
-      return f ? f.visible : true; // default visible
+      return f ? f.visible : false; // default hidden for performance
     });
   }, [allSeriesData, tabCategoryFilters]);
 
