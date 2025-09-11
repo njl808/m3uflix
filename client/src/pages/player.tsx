@@ -227,28 +227,48 @@ export default function Player() {
         // Direct HTML5 video playback
         console.log('Using direct HTML5 playback');
         if (currentToken === loadTokenRef.current) {
-          videoRef.current.src = url;
-          videoRef.current.muted = true;
+          const video = videoRef.current;
+          video.src = url;
+          video.muted = true;
           setIsMuted(true);
-          videoRef.current.load();
-          setIsLoading(false);
-
-          setTimeout(() => {
+          
+          // Use proper event handling instead of setTimeout
+          const handleCanPlay = () => {
             if (currentToken === loadTokenRef.current) {
-              videoRef.current?.play().then(() => {
+              setIsLoading(false);
+              video.play().then(() => {
                 setShowUnmuteHint(true);
                 setTimeout(() => setShowUnmuteHint(false), 5000);
               }).catch((err) => {
                 console.error('Direct playback failed:', err);
                 if (urlIndex < streamUrls.length - 1) {
                   console.log('Direct playback failed, trying next format...');
-                  setTimeout(() => loadStream(urlIndex + 1), 1000);
+                  loadStream(urlIndex + 1);
                 } else {
                   setError('Unable to play this stream with any available format');
                 }
               });
             }
-          }, 1000);
+            video.removeEventListener('canplay', handleCanPlay);
+          };
+          
+          const handleLoadError = () => {
+            if (currentToken === loadTokenRef.current) {
+              console.error('Direct video load failed');
+              setIsLoading(false);
+              if (urlIndex < streamUrls.length - 1) {
+                console.log('Direct load failed, trying next format...');
+                loadStream(urlIndex + 1);
+              } else {
+                setError('Unable to load this stream with any available format');
+              }
+            }
+            video.removeEventListener('error', handleLoadError);
+          };
+          
+          video.addEventListener('canplay', handleCanPlay);
+          video.addEventListener('error', handleLoadError);
+          video.load();
         }
       }
 
@@ -267,9 +287,20 @@ export default function Player() {
 
   // Load stream when component mounts or stream changes
   useEffect(() => {
-    if (streamUrls.length > 0) {
-      loadStream(0);
+    console.log('[PLAYER] Effect triggered - api:', !!api, 'streamId:', streamId, 'streamUrls.length:', streamUrls.length);
+    
+    if (!api || !streamId) {
+      console.log('[PLAYER] No API or streamId available - api:', !!api, 'streamId:', streamId);
+      return;
     }
+
+    if (streamUrls.length === 0) {
+      console.log('[PLAYER] No streamUrls available - api:', !!api, 'streamId:', streamId);
+      return;
+    }
+
+    console.log('[PLAYER] Effect triggered - api:', !!api, 'streamId:', streamId, 'streamUrls.length:', streamUrls.length);
+    loadStream(0);
 
     // Cleanup on unmount
     return () => {
@@ -278,7 +309,7 @@ export default function Player() {
         hlsRef.current = null;
       }
     };
-  }, [streamId, streamType]);
+  }, [api, streamId, streamType, streamUrls]);
 
   const togglePlay = () => {
     if (!videoRef.current) return;
