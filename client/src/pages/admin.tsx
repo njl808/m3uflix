@@ -142,6 +142,12 @@ export default function Admin() {
     return defaultLayout;
   });
 
+  // State management - Category Manager (tabs)
+  const [tabCategoryManager, setTabCategoryManager] = useState(() => {
+    const saved = localStorage.getItem('iptv-tab-category-manager');
+    return saved ? JSON.parse(saved) : { filters: [] };
+  });
+
   const [newSectionName, setNewSectionName] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [newProfileName, setNewProfileName] = useState('');
@@ -342,9 +348,7 @@ export default function Admin() {
   };
 
   const toggleGlobalCategory = (categoryId: string, type: 'live' | 'movie' | 'series') => {
-    // Use separate storage for tab categories (Category Manager)
-    const categoryManager = JSON.parse(localStorage.getItem('iptv-tab-category-manager') || '{"filters": []}');
-    const currentFilters = categoryManager.filters || [];
+    const currentFilters = tabCategoryManager.filters || [];
     const existingFilter = currentFilters.find((f: any) => f.categoryId === categoryId);
     
     let updatedFilters;
@@ -367,11 +371,9 @@ export default function Admin() {
       }];
     }
 
-    // Save to separate tab category manager storage
-    localStorage.setItem('iptv-tab-category-manager', JSON.stringify({ filters: updatedFilters }));
-    
-    // Force re-render by updating a dummy state
-    setLayout(prev => ({ ...prev }));
+    const updatedManager = { filters: updatedFilters };
+    setTabCategoryManager(updatedManager);
+    localStorage.setItem('iptv-tab-category-manager', JSON.stringify(updatedManager));
   };
 
   return (
@@ -549,10 +551,7 @@ export default function Admin() {
                         <div key={category.category_id} className="flex items-center justify-between p-2 border rounded">
                           <span className="text-sm">{category.category_name}</span>
                           <Switch
-                            checked={(() => {
-                              const categoryManager = JSON.parse(localStorage.getItem('iptv-tab-category-manager') || '{"filters": []}');
-                              return categoryManager.filters?.find((f: any) => f.categoryId === category.category_id)?.visible ?? true;
-                            })()}
+                            checked={tabCategoryManager.filters?.find((f: any) => f.categoryId === category.category_id)?.visible ?? true}
                             onCheckedChange={() => toggleGlobalCategory(category.category_id, 'live')}
                             data-testid={`toggle-live-${category.category_id}`}
                           />
@@ -571,10 +570,7 @@ export default function Admin() {
                         <div key={category.category_id} className="flex items-center justify-between p-2 border rounded">
                           <span className="text-sm">{category.category_name}</span>
                           <Switch
-                            checked={(() => {
-                              const categoryManager = JSON.parse(localStorage.getItem('iptv-tab-category-manager') || '{"filters": []}');
-                              return categoryManager.filters?.find((f: any) => f.categoryId === category.category_id)?.visible ?? true;
-                            })()}
+                            checked={tabCategoryManager.filters?.find((f: any) => f.categoryId === category.category_id)?.visible ?? true}
                             onCheckedChange={() => toggleGlobalCategory(category.category_id, 'movie')}
                             data-testid={`toggle-movie-${category.category_id}`}
                           />
@@ -593,10 +589,7 @@ export default function Admin() {
                         <div key={category.category_id} className="flex items-center justify-between p-2 border rounded">
                           <span className="text-sm">{category.category_name}</span>
                           <Switch
-                            checked={(() => {
-                              const categoryManager = JSON.parse(localStorage.getItem('iptv-tab-category-manager') || '{"filters": []}');
-                              return categoryManager.filters?.find((f: any) => f.categoryId === category.category_id)?.visible ?? true;
-                            })()}
+                            checked={tabCategoryManager.filters?.find((f: any) => f.categoryId === category.category_id)?.visible ?? true}
                             onCheckedChange={() => toggleGlobalCategory(category.category_id, 'series')}
                             data-testid={`toggle-series-${category.category_id}`}
                           />
