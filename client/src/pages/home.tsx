@@ -106,6 +106,7 @@ export default function Home() {
   const { data: epgData, isLoading: epgLoading } = useEPG(api, selectedStreamId);
 
   // Process content for display - memoized to prevent unnecessary re-renders
+  // Homepage content (filtered by layout settings)
   const liveContent: ContentItem[] = useMemo(() => {
     const content = (liveStreams || []).map((stream: XtreamStream) => ({
       id: `live-${stream.stream_id}`,
@@ -117,6 +118,30 @@ export default function Home() {
     }));
     return getFilteredContent(content);
   }, [liveStreams, homepageLayout]);
+
+  // Tab content (unfiltered by layout, only filtered by Category Manager)
+  const liveTabContent: ContentItem[] = useMemo(() => {
+    const content = (liveStreams || []).map((stream: XtreamStream) => ({
+      id: `live-${stream.stream_id}`,
+      title: stream.name,
+      type: 'live' as const,
+      poster: stream.stream_icon,
+      streamId: stream.stream_id,
+      categoryId: stream.category_id,
+    }));
+    // Only apply category manager filters, not homepage layout filters
+    const allFilters = homepageLayout.globalCategoryFilters || [];
+    const typeFilters = allFilters.filter((f: any) => f.type === 'live');
+    
+    if (typeFilters.length === 0) {
+      return content; // No category manager filters set, show everything
+    }
+    
+    return content.filter(item => {
+      const globalFilter = typeFilters.find((f: any) => f.categoryId === item.categoryId);
+      return globalFilter && globalFilter.visible;
+    });
+  }, [liveStreams, homepageLayout.globalCategoryFilters]);
 
   const movieContent: ContentItem[] = useMemo(() => {
     const content = (vodStreams || []).map((vod: XtreamVOD) => ({
@@ -130,6 +155,30 @@ export default function Home() {
     }));
     return getFilteredContent(content);
   }, [vodStreams, homepageLayout]);
+
+  const movieTabContent: ContentItem[] = useMemo(() => {
+    const content = (vodStreams || []).map((vod: XtreamVOD) => ({
+      id: `movie-${vod.stream_id}`,
+      title: vod.name,
+      type: 'movie' as const,
+      poster: vod.stream_icon,
+      rating: vod.rating_5based,
+      streamId: vod.stream_id,
+      categoryId: vod.category_id,
+    }));
+    // Only apply category manager filters, not homepage layout filters
+    const allFilters = homepageLayout.globalCategoryFilters || [];
+    const typeFilters = allFilters.filter((f: any) => f.type === 'movie');
+    
+    if (typeFilters.length === 0) {
+      return content; // No category manager filters set, show everything
+    }
+    
+    return content.filter(item => {
+      const globalFilter = typeFilters.find((f: any) => f.categoryId === item.categoryId);
+      return globalFilter && globalFilter.visible;
+    });
+  }, [vodStreams, homepageLayout.globalCategoryFilters]);
 
   const seriesContent: ContentItem[] = useMemo(() => {
     const content = (seriesData || []).map((series: XtreamSeries) => ({
@@ -146,7 +195,34 @@ export default function Home() {
     return getFilteredContent(content);
   }, [seriesData, homepageLayout]);
 
+  const seriesTabContent: ContentItem[] = useMemo(() => {
+    const content = (seriesData || []).map((series: XtreamSeries) => ({
+      id: `series-${series.series_id}`,
+      title: series.name,
+      type: 'series' as const,
+      poster: series.cover,
+      rating: series.rating_5based,
+      description: series.plot,
+      year: series.releaseDate,
+      streamId: series.series_id,
+      categoryId: series.category_id,
+    }));
+    // Only apply category manager filters, not homepage layout filters
+    const allFilters = homepageLayout.globalCategoryFilters || [];
+    const typeFilters = allFilters.filter((f: any) => f.type === 'series');
+    
+    if (typeFilters.length === 0) {
+      return content; // No category manager filters set, show everything
+    }
+    
+    return content.filter(item => {
+      const globalFilter = typeFilters.find((f: any) => f.categoryId === item.categoryId);
+      return globalFilter && globalFilter.visible;
+    });
+  }, [seriesData, homepageLayout.globalCategoryFilters]);
+
   const allContent = useMemo(() => [...liveContent, ...movieContent, ...seriesContent], [liveContent, movieContent, seriesContent]);
+  const allTabContent = useMemo(() => [...liveTabContent, ...movieTabContent, ...seriesTabContent], [liveTabContent, movieTabContent, seriesTabContent]);
   const searchResults = useSearch(filteredContent.length > 0 ? filteredContent : allContent, searchQuery);
   const favoriteContent = useMemo(() => (filteredContent.length > 0 ? filteredContent : allContent).filter(item => isFavorite(item.id)), [filteredContent, allContent, favorites]);
 
@@ -302,7 +378,9 @@ export default function Home() {
   };
 
   const getContentForSection = () => {
-    const contentToUse = filteredContent.length > 0 ? filteredContent : allContent;
+    // For tabs, use unfiltered content that only applies Category Manager settings
+    const contentToUse = filteredContent.length > 0 ? filteredContent : 
+                        (currentSection === 'home' ? allContent : allTabContent);
     
     if (searchQuery && searchResults.length > 0) {
       return searchResults;
