@@ -141,24 +141,14 @@ export default function Home() {
     const allFilters = homepageLayout.globalCategoryFilters || [];
     const typeFilters = allFilters.filter((f: any) => f.type === 'live');
     
-    console.log('=== LIVE TAB FILTERS DEBUG ===');
-    console.log('Total filters:', allFilters.length);
-    console.log('Live filters found:', typeFilters.length);
-    console.log('Live filter details:', JSON.stringify(typeFilters, null, 2));
-    console.log('Total content length:', content.length);
-    
     if (typeFilters.length === 0) {
-      console.log('LIVE: No filters, showing all content');
       return content; // No category manager filters set, show everything
     }
     
-    const filteredContent = content.filter(item => {
+    return content.filter(item => {
       const globalFilter = typeFilters.find((f: any) => String(f.categoryId) === String(item.categoryId));
       return globalFilter && globalFilter.visible;
     });
-    
-    console.log('LIVE: Filtered result:', filteredContent.length, 'items');
-    return filteredContent;
   }, [allLiveStreams, homepageLayout.globalCategoryFilters]);
 
   const movieContent: ContentItem[] = useMemo(() => {
@@ -188,24 +178,14 @@ export default function Home() {
     const allFilters = homepageLayout.globalCategoryFilters || [];
     const typeFilters = allFilters.filter((f: any) => f.type === 'movie');
     
-    console.log('=== MOVIE TAB FILTERS DEBUG ===');
-    console.log('Total filters:', allFilters.length);
-    console.log('Movie filters found:', typeFilters.length);
-    console.log('Movie filter details:', JSON.stringify(typeFilters, null, 2));
-    console.log('Total content length:', content.length);
-    
     if (typeFilters.length === 0) {
-      console.log('MOVIE: No filters, showing all content');
       return content; // No category manager filters set, show everything
     }
     
-    const filteredContent = content.filter(item => {
+    return content.filter(item => {
       const globalFilter = typeFilters.find((f: any) => String(f.categoryId) === String(item.categoryId));
       return globalFilter && globalFilter.visible;
     });
-    
-    console.log('MOVIE: Filtered result:', filteredContent.length, 'items');
-    return filteredContent;
   }, [allVodStreams, homepageLayout.globalCategoryFilters]);
 
   const seriesContent: ContentItem[] = useMemo(() => {
