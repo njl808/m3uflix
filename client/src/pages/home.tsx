@@ -56,15 +56,13 @@ export default function Home() {
   // Apply regional and global filtering to content
   const getFilteredContent = (content: ContentItem[]) => {
     return content.filter(item => {
-      // First check global category filters - these override everything
-      const globalFilters = homepageLayout.globalCategoryFilters || [];
+      // First check global category filters - but only for the item's type
+      const allFilters = homepageLayout.globalCategoryFilters || [];
+      const typeFilters = allFilters.filter((f: any) => f.type === item.type);
       
-      // If no global filters configured, show everything (good for new users)
-      if (globalFilters.length === 0) {
-        // Continue to regional filtering below
-      } else {
-        // If filters exist, only show explicitly selected categories
-        const globalFilter = globalFilters.find((f: any) => f.categoryId === item.categoryId);
+      // Only apply filtering if there are filters for this specific type
+      if (typeFilters.length > 0) {
+        const globalFilter = typeFilters.find((f: any) => f.categoryId === item.categoryId);
         if (!globalFilter || !globalFilter.visible) return false;
       }
       
