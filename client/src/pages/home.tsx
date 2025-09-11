@@ -97,9 +97,17 @@ export default function Home() {
 
   // API Queries
   const { data: authData, isError: authError } = useAuthentication(api);
+  
+  // Homepage queries (filtered by selectedCategory for layout)
   const { data: liveStreams, isLoading: liveLoading } = useLiveStreams(api, selectedCategory);
   const { data: vodStreams, isLoading: vodLoading } = useVODStreams(api, selectedCategory);
   const { data: seriesData, isLoading: seriesLoading } = useSeries(api, selectedCategory);
+  
+  // Tab queries (no category filter to get ALL content)
+  const { data: allLiveStreams } = useLiveStreams(api);
+  const { data: allVodStreams } = useVODStreams(api);
+  const { data: allSeriesData } = useSeries(api);
+  
   const { data: liveCategories } = useCategories(api, 'live');
   const { data: vodCategories } = useCategories(api, 'vod');
   const { data: seriesCategories } = useCategories(api, 'series');
@@ -121,7 +129,7 @@ export default function Home() {
 
   // Tab content (unfiltered by layout, only filtered by Category Manager)
   const liveTabContent: ContentItem[] = useMemo(() => {
-    const content = (liveStreams || []).map((stream: XtreamStream) => ({
+    const content = (allLiveStreams || []).map((stream: XtreamStream) => ({
       id: `live-${stream.stream_id}`,
       title: stream.name,
       type: 'live' as const,
@@ -141,7 +149,7 @@ export default function Home() {
       const globalFilter = typeFilters.find((f: any) => String(f.categoryId) === String(item.categoryId));
       return globalFilter && globalFilter.visible;
     });
-  }, [liveStreams, homepageLayout.globalCategoryFilters]);
+  }, [allLiveStreams, homepageLayout.globalCategoryFilters]);
 
   const movieContent: ContentItem[] = useMemo(() => {
     const content = (vodStreams || []).map((vod: XtreamVOD) => ({
@@ -157,7 +165,7 @@ export default function Home() {
   }, [vodStreams, homepageLayout]);
 
   const movieTabContent: ContentItem[] = useMemo(() => {
-    const content = (vodStreams || []).map((vod: XtreamVOD) => ({
+    const content = (allVodStreams || []).map((vod: XtreamVOD) => ({
       id: `movie-${vod.stream_id}`,
       title: vod.name,
       type: 'movie' as const,
@@ -178,7 +186,7 @@ export default function Home() {
       const globalFilter = typeFilters.find((f: any) => String(f.categoryId) === String(item.categoryId));
       return globalFilter && globalFilter.visible;
     });
-  }, [vodStreams, homepageLayout.globalCategoryFilters]);
+  }, [allVodStreams, homepageLayout.globalCategoryFilters]);
 
   const seriesContent: ContentItem[] = useMemo(() => {
     const content = (seriesData || []).map((series: XtreamSeries) => ({
@@ -196,7 +204,7 @@ export default function Home() {
   }, [seriesData, homepageLayout]);
 
   const seriesTabContent: ContentItem[] = useMemo(() => {
-    const content = (seriesData || []).map((series: XtreamSeries) => ({
+    const content = (allSeriesData || []).map((series: XtreamSeries) => ({
       id: `series-${series.series_id}`,
       title: series.name,
       type: 'series' as const,
@@ -219,7 +227,7 @@ export default function Home() {
       const globalFilter = typeFilters.find((f: any) => String(f.categoryId) === String(item.categoryId));
       return globalFilter && globalFilter.visible;
     });
-  }, [seriesData, homepageLayout.globalCategoryFilters]);
+  }, [allSeriesData, homepageLayout.globalCategoryFilters]);
 
   const allContent = useMemo(() => [...liveContent, ...movieContent, ...seriesContent], [liveContent, movieContent, seriesContent]);
   const allTabContent = useMemo(() => [...liveTabContent, ...movieTabContent, ...seriesTabContent], [liveTabContent, movieTabContent, seriesTabContent]);
