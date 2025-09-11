@@ -394,13 +394,28 @@ export default function Home() {
     const contentToUse = filteredContent.length > 0 ? filteredContent : 
                         (currentSection === 'home' ? allContent : allTabContent);
     
+    // Debug logging
+    if (currentSection === 'live') {
+      console.log('LIVE TAB DEBUG:', {
+        currentSection,
+        filteredContentLength: filteredContent.length,
+        allContentLength: allContent.length, 
+        allTabContentLength: allTabContent.length,
+        liveTabContentLength: liveTabContent.length,
+        contentToUseLength: contentToUse.length,
+        usingAllTabContent: currentSection !== 'home'
+      });
+    }
+    
     if (searchQuery && searchResults.length > 0) {
       return searchResults;
     }
 
     switch (currentSection) {
       case 'live':
-        return contentToUse.filter(item => item.type === 'live' && (!selectedCategory || item.categoryId === selectedCategory));
+        const liveResult = contentToUse.filter(item => item.type === 'live' && (!selectedCategory || item.categoryId === selectedCategory));
+        console.log('LIVE TAB RESULT:', liveResult.length, 'items');
+        return liveResult;
       case 'movies':
         return contentToUse.filter(item => item.type === 'movie' && (!selectedCategory || item.categoryId === selectedCategory));
       case 'series':
