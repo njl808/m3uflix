@@ -347,26 +347,26 @@ export default function Admin() {
     }));
   };
 
-  const toggleGlobalCategory = (categoryId: string, type: 'live' | 'movie' | 'series') => {
+  const setGlobalCategory = (categoryId: string, type: 'live' | 'movie' | 'series', visible: boolean) => {
     const currentFilters = tabCategoryManager.filters || [];
     const existingFilter = currentFilters.find((f: any) => f.categoryId === categoryId);
     
     let updatedFilters;
     if (existingFilter) {
-      // Toggle existing filter
+      // Update existing filter
       updatedFilters = currentFilters.map((filter: any) =>
         filter.categoryId === categoryId 
-          ? { ...filter, visible: !filter.visible }
+          ? { ...filter, visible }
           : filter
       );
     } else {
-      // Add new filter as enabled (since default is now hidden)
+      // Add new filter with explicit visibility
       const categoryName = allCategories?.find(c => c.category_id === categoryId)?.category_name || 'Unknown';
       updatedFilters = [...currentFilters, {
         categoryId,
         categoryName,
         type,
-        visible: true,  // Changed: now we add as visible when user clicks
+        visible,
         keywords: []
       }];
     }
@@ -555,7 +555,7 @@ export default function Admin() {
                           <span className="text-sm">{category.category_name}</span>
                           <Switch
                             checked={tabCategoryManager.filters?.find((f: any) => f.categoryId === category.category_id)?.visible ?? true}
-                            onCheckedChange={() => toggleGlobalCategory(category.category_id, 'live')}
+                            onCheckedChange={(checked) => setGlobalCategory(category.category_id, 'live', checked)}
                             data-testid={`toggle-live-${category.category_id}`}
                           />
                         </div>
@@ -574,7 +574,7 @@ export default function Admin() {
                           <span className="text-sm">{category.category_name}</span>
                           <Switch
                             checked={tabCategoryManager.filters?.find((f: any) => f.categoryId === category.category_id)?.visible ?? true}
-                            onCheckedChange={() => toggleGlobalCategory(category.category_id, 'movie')}
+                            onCheckedChange={(checked) => setGlobalCategory(category.category_id, 'movie', checked)}
                             data-testid={`toggle-movie-${category.category_id}`}
                           />
                         </div>
@@ -593,7 +593,7 @@ export default function Admin() {
                           <span className="text-sm">{category.category_name}</span>
                           <Switch
                             checked={tabCategoryManager.filters?.find((f: any) => f.categoryId === category.category_id)?.visible ?? true}
-                            onCheckedChange={() => toggleGlobalCategory(category.category_id, 'series')}
+                            onCheckedChange={(checked) => setGlobalCategory(category.category_id, 'series', checked)}
                             data-testid={`toggle-series-${category.category_id}`}
                           />
                         </div>

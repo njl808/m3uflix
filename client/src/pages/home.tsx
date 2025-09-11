@@ -161,13 +161,9 @@ export default function Home() {
     
     const typeFilters = tabCategoryFilters.filter((f: any) => f.type === 'live');
     
-    if (typeFilters.length === 0) {
-      return content; // No tab category filters set, show everything
-    }
-    
     return content.filter(item => {
-      const globalFilter = typeFilters.find((f: any) => String(f.categoryId) === String(item.categoryId));
-      return globalFilter && globalFilter.visible;
+      const f = typeFilters.find(f => String(f.categoryId) === String(item.categoryId));
+      return f ? f.visible : true; // default visible
     });
   }, [allLiveStreams, tabCategoryFilters]);
 
@@ -197,13 +193,9 @@ export default function Home() {
     
     const typeFilters = tabCategoryFilters.filter((f: any) => f.type === 'movie');
     
-    if (typeFilters.length === 0) {
-      return content; // No tab category filters set, show everything
-    }
-    
     return content.filter(item => {
-      const globalFilter = typeFilters.find((f: any) => String(f.categoryId) === String(item.categoryId));
-      return globalFilter && globalFilter.visible;
+      const f = typeFilters.find(f => String(f.categoryId) === String(item.categoryId));
+      return f ? f.visible : true; // default visible
     });
   }, [allVodStreams, tabCategoryFilters]);
 
@@ -237,13 +229,9 @@ export default function Home() {
     
     const typeFilters = tabCategoryFilters.filter((f: any) => f.type === 'series');
     
-    if (typeFilters.length === 0) {
-      return content; // No tab category filters set, show everything
-    }
-    
     return content.filter(item => {
-      const globalFilter = typeFilters.find((f: any) => String(f.categoryId) === String(item.categoryId));
-      return globalFilter && globalFilter.visible;
+      const f = typeFilters.find(f => String(f.categoryId) === String(item.categoryId));
+      return f ? f.visible : true; // default visible
     });
   }, [allSeriesData, tabCategoryFilters]);
 
