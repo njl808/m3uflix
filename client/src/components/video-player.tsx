@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { X, Play, Pause, Volume2, Maximize } from "lucide-react";
+import { X, Play, Pause, Volume2, Maximize, Monitor } from "lucide-react";
 import { ContentItem } from "@/types/xtream";
 
 interface VideoPlayerProps {
@@ -15,6 +15,19 @@ export function VideoPlayer({ content, streamUrl, onClose }: VideoPlayerProps) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [showControls, setShowControls] = useState(true);
+  
+  // Aspect ratio modes
+  type AspectRatioMode = 'contain' | 'cover' | 'fill' | 'scale-down' | 'none';
+  const aspectRatioModes: { mode: AspectRatioMode; label: string; description: string }[] = [
+    { mode: 'contain', label: 'Fit', description: 'Fit entire video (may show black bars)' },
+    { mode: 'cover', label: 'Fill', description: 'Fill screen (may crop video)' },
+    { mode: 'fill', label: 'Stretch', description: 'Stretch to fill (may distort)' },
+    { mode: 'scale-down', label: 'Scale', description: 'Scale down if too large' },
+    { mode: 'none', label: 'Original', description: 'Original video size' }
+  ];
+  
+  const [aspectRatioIndex, setAspectRatioIndex] = useState(0);
+  const currentAspectRatio = aspectRatioModes[aspectRatioIndex];
 
   useEffect(() => {
     if (streamUrl && videoRef.current) {
@@ -68,6 +81,10 @@ export function VideoPlayer({ content, streamUrl, onClose }: VideoPlayerProps) {
     }
   };
 
+  const handleAspectRatioChange = () => {
+    setAspectRatioIndex((prev) => (prev + 1) % aspectRatioModes.length);
+  };
+
   const formatTime = (time: number) => {
     const hours = Math.floor(time / 3600);
     const minutes = Math.floor((time % 3600) / 60);
@@ -98,7 +115,8 @@ export function VideoPlayer({ content, streamUrl, onClose }: VideoPlayerProps) {
 
       <video
         ref={videoRef}
-        className="w-full h-full object-contain"
+        className="w-full h-full"
+        style={{ objectFit: currentAspectRatio.mode }}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onPlay={() => setIsPlaying(true)}
@@ -155,6 +173,16 @@ export function VideoPlayer({ content, streamUrl, onClose }: VideoPlayerProps) {
                 data-testid="button-volume"
               >
                 <Volume2 className="w-6 h-6" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleAspectRatioChange}
+                title={`${currentAspectRatio.label}: ${currentAspectRatio.description}`}
+                data-testid="button-aspect-ratio"
+              >
+                <Monitor className="w-6 h-6" />
               </Button>
 
               <Button
