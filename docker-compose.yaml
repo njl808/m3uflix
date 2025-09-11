@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: iptv-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: iptv_player
+      POSTGRES_USER: iptv_user
+      POSTGRES_PASSWORD: iptv_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - iptv-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U iptv_user -d iptv_player"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # IPTV Player Application
+  iptv-player:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: iptv-player-app
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      # Application Environment
+      NODE_ENV: production
+      PORT: 5000
+      
+      # Database Configuration
+      DATABASE_URL: postgresql://iptv_user:iptv_password@postgres:5432/iptv_player
+      
+      # Xtream Codes API Configuration (Override these with your credentials)
+      XTREAM_URL: ${XTREAM_URL:-http://cf.its-cdn.me}
+      XTREAM_USERNAME: ${XTREAM_USERNAME:-8013b66c755f}
+      XTREAM_PASSWORD: ${XTREAM_PASSWORD:-b1f7fde4e3}
+      
+      # Session Configuration
+      SESSION_SECRET: ${SESSION_SECRET:-your-super-secret-session-key-change-this-in-production}
+      
+      # Optional: Additional Configuration
+      TZ: ${TZ:-UTC}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - iptv-network
+    volumes:
+      # Optional: Mount for persistent storage if needed
+      - app_data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  iptv-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  app_data:
+    driver: local
