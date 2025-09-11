@@ -347,6 +347,7 @@ export default function Admin() {
     }));
   };
 
+  // Category Manager function (for tabs)
   const setGlobalCategory = (categoryId: string, type: 'live' | 'movie' | 'series', visible: boolean) => {
     const currentFilters = tabCategoryManager.filters || [];
     const existingFilter = currentFilters.find((f: any) => f.categoryId === categoryId);
@@ -377,6 +378,39 @@ export default function Admin() {
     
     // Trigger storage event for same-window updates
     window.dispatchEvent(new Event('storage'));
+  };
+
+  // Layout Settings function (for homepage)
+  const toggleGlobalCategory = (categoryId: string, type: 'live' | 'movie' | 'series') => {
+    setLayout(prev => {
+      const currentFilters = prev.globalCategoryFilters || [];
+      const existingFilter = currentFilters.find(f => f.categoryId === categoryId);
+      
+      let updatedFilters;
+      if (existingFilter) {
+        // Toggle existing filter
+        updatedFilters = currentFilters.map(filter =>
+          filter.categoryId === categoryId 
+            ? { ...filter, visible: !filter.visible }
+            : filter
+        );
+      } else {
+        // Add new filter as visible
+        const categoryName = allCategories?.find(c => c.category_id === categoryId)?.category_name || 'Unknown';
+        updatedFilters = [...currentFilters, {
+          categoryId,
+          categoryName,
+          type,
+          visible: true,
+          keywords: []
+        }];
+      }
+
+      return {
+        ...prev,
+        globalCategoryFilters: updatedFilters
+      };
+    });
   };
 
   return (
