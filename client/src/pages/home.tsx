@@ -390,40 +390,25 @@ export default function Home() {
   };
 
   const getContentForSection = () => {
-    // For tabs, use unfiltered content that only applies Category Manager settings
-    const contentToUse = filteredContent.length > 0 ? filteredContent : 
-                        (currentSection === 'home' ? allContent : allTabContent);
-    
-    // Debug logging
-    if (currentSection === 'live') {
-      console.log('LIVE TAB DEBUG:', {
-        currentSection,
-        filteredContentLength: filteredContent.length,
-        allContentLength: allContent.length, 
-        allTabContentLength: allTabContent.length,
-        liveTabContentLength: liveTabContent.length,
-        contentToUseLength: contentToUse.length,
-        usingAllTabContent: currentSection !== 'home'
-      });
-    }
-    
     if (searchQuery && searchResults.length > 0) {
       return searchResults;
     }
 
+    // For TABS: ignore filteredContent and use direct tab content (Category Manager filtered)
+    // For HOME: use filteredContent if available, otherwise allContent (Layout filtered)
     switch (currentSection) {
       case 'live':
-        const liveResult = contentToUse.filter(item => item.type === 'live' && (!selectedCategory || item.categoryId === selectedCategory));
-        console.log('LIVE TAB RESULT:', liveResult.length, 'items');
-        return liveResult;
+        return liveTabContent.filter(item => !selectedCategory || item.categoryId === selectedCategory);
       case 'movies':
-        return contentToUse.filter(item => item.type === 'movie' && (!selectedCategory || item.categoryId === selectedCategory));
+        return movieTabContent.filter(item => !selectedCategory || item.categoryId === selectedCategory);
       case 'series':
-        return contentToUse.filter(item => item.type === 'series' && (!selectedCategory || item.categoryId === selectedCategory));
+        return seriesTabContent.filter(item => !selectedCategory || item.categoryId === selectedCategory);
       case 'favorites':
         return favoriteContent;
       default:
-        return contentToUse;
+        // Home page - use Layout & Display Settings
+        const homeContent = filteredContent.length > 0 ? filteredContent : allContent;
+        return homeContent;
     }
   };
 
