@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useLocation, useRoute } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -16,6 +16,7 @@ export default function Player() {
   const hlsRef = useRef<Hls | null>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const loadTokenRef = useRef<number>(0);
+  const currentSrcRef = useRef<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true); // Start muted for better autoplay
   const [currentTime, setCurrentTime] = useState(0);
@@ -33,8 +34,10 @@ export default function Player() {
   const streamType = params?.type as 'live' | 'movie' | 'series';
   const streamId = params?.streamId ? parseInt(params.streamId) : null;
 
-  // Generate multiple stream URLs for fallback using enhanced API
-  const streamUrls = api && streamId ? api.buildStreamUrls(streamId, streamType) : [];
+  // Generate multiple stream URLs for fallback using enhanced API - memoized to prevent infinite loops
+  const streamUrls = useMemo(() => {
+    return api && streamId ? api.buildStreamUrls(streamId, streamType) : [];
+  }, [api, streamId, streamType]);
 
   // Focus container on mount to enable keyboard shortcuts
   useEffect(() => {
@@ -120,7 +123,14 @@ export default function Player() {
     const streamData = streamUrls[urlIndex];
     const { url, format, description } = streamData;
 
+    // Prevent reloading the same URL
+    if (currentSrcRef.current === url && urlIndex === 0) {
+      console.log('Same URL already loading, skipping');
+      return;
+    }
+
     console.log(`Trying stream ${urlIndex + 1}/${streamUrls.length}: ${format} - ${url}`);
+    currentSrcRef.current = url;
     setCurrentFormat(format);
     setIsLoading(true);
     setError(null);
@@ -232,10 +242,11 @@ export default function Player() {
           video.muted = true;
           setIsMuted(true);
           
-          // Use proper event handling instead of setTimeout
-          const handleCanPlay = () => {
+          video.load();
+          setIsLoading(false);
+
+          setTimeout(() => {
             if (currentToken === loadTokenRef.current) {
-              setIsLoading(false);
               video.play().then(() => {
                 setShowUnmuteHint(true);
                 setTimeout(() => setShowUnmuteHint(false), 5000);
@@ -243,32 +254,13 @@ export default function Player() {
                 console.error('Direct playback failed:', err);
                 if (urlIndex < streamUrls.length - 1) {
                   console.log('Direct playback failed, trying next format...');
-                  loadStream(urlIndex + 1);
+                  setTimeout(() => loadStream(urlIndex + 1), 1000);
                 } else {
                   setError('Unable to play this stream with any available format');
                 }
               });
             }
-            video.removeEventListener('canplay', handleCanPlay);
-          };
-          
-          const handleLoadError = () => {
-            if (currentToken === loadTokenRef.current) {
-              console.error('Direct video load failed');
-              setIsLoading(false);
-              if (urlIndex < streamUrls.length - 1) {
-                console.log('Direct load failed, trying next format...');
-                loadStream(urlIndex + 1);
-              } else {
-                setError('Unable to load this stream with any available format');
-              }
-            }
-            video.removeEventListener('error', handleLoadError);
-          };
-          
-          video.addEventListener('canplay', handleCanPlay);
-          video.addEventListener('error', handleLoadError);
-          video.load();
+          }, 1000);
         }
       }
 
@@ -299,17 +291,29 @@ export default function Player() {
       return;
     }
 
-    console.log('[PLAYER] Effect triggered - api:', !!api, 'streamId:', streamId, 'streamUrls.length:', streamUrls.length);
     loadStream(0);
 
     // Cleanup on unmount
     return () => {
+      // Clear current loading source
+      currentSrcRef.current = null;
+      ++loadTokenRef.current; // Cancel any pending loads
+      
+      // Clean up video
+      const video = videoRef.current;
+      if (video) {
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+      }
+      
+      // Clean up HLS
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
       }
     };
-  }, [api, streamId, streamType, streamUrls]);
+  }, [api, streamId, streamType]);
 
   const togglePlay = () => {
     if (!videoRef.current) return;
