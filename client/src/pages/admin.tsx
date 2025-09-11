@@ -413,6 +413,31 @@ export default function Admin() {
     });
   };
 
+  // Clear All functions for Category Manager
+  const clearAllCategories = (type: 'live' | 'movie' | 'series') => {
+    const categoryList = type === 'live' ? liveCategories : 
+                        type === 'movie' ? vodCategories : seriesCategories;
+    
+    if (categoryList) {
+      const clearedFilters = categoryList.map(category => ({
+        categoryId: category.category_id,
+        categoryName: category.category_name,
+        type,
+        visible: false,
+        keywords: []
+      }));
+
+      const currentFilters = tabCategoryManager.filters || [];
+      const otherFilters = currentFilters.filter((f: any) => f.type !== type);
+      const updatedFilters = [...otherFilters, ...clearedFilters];
+
+      const updatedManager = { filters: updatedFilters };
+      setTabCategoryManager(updatedManager);
+      localStorage.setItem('iptv-tab-category-manager', JSON.stringify(updatedManager));
+      window.dispatchEvent(new Event('storage'));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -580,15 +605,26 @@ export default function Admin() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* Live TV Categories */}
                   <div className="space-y-3">
-                    <h3 className="font-medium flex items-center gap-2">
-                      Live TV Categories ({liveCategories?.length || 0})
-                    </h3>
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-medium flex items-center gap-2">
+                        Live TV Categories ({liveCategories?.length || 0})
+                      </h3>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => clearAllCategories('live')}
+                        data-testid="clear-all-live-categories"
+                        className="text-xs"
+                      >
+                        Clear All
+                      </Button>
+                    </div>
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                       {(liveCategories || []).map(category => (
                         <div key={category.category_id} className="flex items-center justify-between p-2 border rounded">
                           <span className="text-sm">{category.category_name}</span>
                           <Switch
-                            checked={tabCategoryManager.filters?.find((f: any) => f.categoryId === category.category_id)?.visible ?? true}
+                            checked={tabCategoryManager.filters?.find((f: any) => f.categoryId === category.category_id)?.visible ?? false}
                             onCheckedChange={(checked) => setGlobalCategory(category.category_id, 'live', checked)}
                             data-testid={`toggle-live-${category.category_id}`}
                           />
@@ -599,15 +635,26 @@ export default function Admin() {
 
                   {/* Movie Categories */}
                   <div className="space-y-3">
-                    <h3 className="font-medium flex items-center gap-2">
-                      Movie Categories ({vodCategories?.length || 0})
-                    </h3>
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-medium flex items-center gap-2">
+                        Movie Categories ({vodCategories?.length || 0})
+                      </h3>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => clearAllCategories('movie')}
+                        data-testid="clear-all-movie-categories"
+                        className="text-xs"
+                      >
+                        Clear All
+                      </Button>
+                    </div>
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                       {(vodCategories || []).map(category => (
                         <div key={category.category_id} className="flex items-center justify-between p-2 border rounded">
                           <span className="text-sm">{category.category_name}</span>
                           <Switch
-                            checked={tabCategoryManager.filters?.find((f: any) => f.categoryId === category.category_id)?.visible ?? true}
+                            checked={tabCategoryManager.filters?.find((f: any) => f.categoryId === category.category_id)?.visible ?? false}
                             onCheckedChange={(checked) => setGlobalCategory(category.category_id, 'movie', checked)}
                             data-testid={`toggle-movie-${category.category_id}`}
                           />
@@ -618,15 +665,26 @@ export default function Admin() {
 
                   {/* Series Categories */}
                   <div className="space-y-3">
-                    <h3 className="font-medium flex items-center gap-2">
-                      Series Categories ({seriesCategories?.length || 0})
-                    </h3>
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-medium flex items-center gap-2">
+                        Series Categories ({seriesCategories?.length || 0})
+                      </h3>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => clearAllCategories('series')}
+                        data-testid="clear-all-series-categories"
+                        className="text-xs"
+                      >
+                        Clear All
+                      </Button>
+                    </div>
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                       {(seriesCategories || []).map(category => (
                         <div key={category.category_id} className="flex items-center justify-between p-2 border rounded">
                           <span className="text-sm">{category.category_name}</span>
                           <Switch
-                            checked={tabCategoryManager.filters?.find((f: any) => f.categoryId === category.category_id)?.visible ?? true}
+                            checked={tabCategoryManager.filters?.find((f: any) => f.categoryId === category.category_id)?.visible ?? false}
                             onCheckedChange={(checked) => setGlobalCategory(category.category_id, 'series', checked)}
                             data-testid={`toggle-series-${category.category_id}`}
                           />
