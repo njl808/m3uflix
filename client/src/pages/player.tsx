@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useLocation, useRoute } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { ArrowLeft, Play, Pause, Volume2, VolumeX, Maximize, RotateCcw, ExternalLink } from "lucide-react";
+import { ArrowLeft, Play, Pause, Volume2, VolumeX, Maximize, RotateCcw, ExternalLink, Monitor } from "lucide-react";
 import { useXtreamConfig, useXtreamAPI } from "@/hooks/use-xtream-api";
 import Hls from "hls.js";
 
@@ -30,6 +30,19 @@ export default function Player() {
   const [currentFormat, setCurrentFormat] = useState<string>('');
   const [retryCount, setRetryCount] = useState(0);
   const [showUnmuteHint, setShowUnmuteHint] = useState(false);
+  
+  // Aspect ratio modes
+  type AspectRatioMode = 'contain' | 'cover' | 'fill' | 'scale-down' | 'none';
+  const aspectRatioModes: { mode: AspectRatioMode; label: string; description: string }[] = [
+    { mode: 'contain', label: 'Fit', description: 'Fit entire video (may show black bars)' },
+    { mode: 'cover', label: 'Fill', description: 'Fill screen (may crop video)' },
+    { mode: 'fill', label: 'Stretch', description: 'Stretch to fill (may distort)' },
+    { mode: 'scale-down', label: 'Scale', description: 'Scale down if too large' },
+    { mode: 'none', label: 'Original', description: 'Original video size' }
+  ];
+  
+  const [aspectRatioIndex, setAspectRatioIndex] = useState(1); // Default to 'cover'
+  const currentAspectRatio = aspectRatioModes[aspectRatioIndex];
 
   const streamType = params?.type as 'live' | 'movie' | 'series';
   const streamId = params?.streamId ? parseInt(params.streamId) : null;
@@ -384,6 +397,10 @@ export default function Player() {
     loadStream(0);
   };
 
+  const handleAspectRatioChange = () => {
+    setAspectRatioIndex((prev) => (prev + 1) % aspectRatioModes.length);
+  };
+
   const openExternalPlayer = () => {
     if (streamUrls.length > 0 && api && streamId) {
       // Create direct URLs for external players (bypassing proxy)
@@ -498,6 +515,9 @@ export default function Player() {
         case 'ArrowDown':
           handleVolumeChange(Math.max(volume - 0.05, 0));
           break;
+        case 'a':
+          handleAspectRatioChange();
+          break;
       }
     };
 
@@ -544,7 +564,8 @@ export default function Player() {
       {/* Video Element */}
       <video
         ref={videoRef}
-        className="w-full h-screen object-cover"
+        className="w-full h-screen"
+        style={{ objectFit: currentAspectRatio.mode }}
         controls={false}
         playsInline
         data-testid="video-player"
@@ -674,6 +695,16 @@ export default function Player() {
               )}
 
               <div className="flex-1" />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleAspectRatioChange}
+                title={`${currentAspectRatio.label}: ${currentAspectRatio.description}`}
+                className="text-white hover:bg-white/20"
+                data-testid="button-aspect-ratio"
+              >
+                <Monitor className="w-5 h-5" />
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
