@@ -127,7 +127,7 @@ export default function Home() {
     return getFilteredContent(content);
   }, [liveStreams, homepageLayout]);
 
-  // Tab content (unfiltered by layout, only filtered by Category Manager)
+  // Tab content (controlled by separate Category Manager - NOT Layout Settings)
   const liveTabContent: ContentItem[] = useMemo(() => {
     const content = (allLiveStreams || []).map((stream: XtreamStream) => ({
       id: `live-${stream.stream_id}`,
@@ -137,19 +137,21 @@ export default function Home() {
       streamId: stream.stream_id,
       categoryId: stream.category_id,
     }));
-    // Only apply category manager filters, not homepage layout filters
-    const allFilters = homepageLayout.globalCategoryFilters || [];
+    
+    // Use separate Category Manager storage (for tabs)
+    const categoryManager = JSON.parse(localStorage.getItem('iptv-tab-category-manager') || '{"filters": []}');
+    const allFilters = categoryManager.filters || [];
     const typeFilters = allFilters.filter((f: any) => f.type === 'live');
     
     if (typeFilters.length === 0) {
-      return content; // No category manager filters set, show everything
+      return content; // No tab category filters set, show everything
     }
     
     return content.filter(item => {
       const globalFilter = typeFilters.find((f: any) => String(f.categoryId) === String(item.categoryId));
       return globalFilter && globalFilter.visible;
     });
-  }, [allLiveStreams, homepageLayout.globalCategoryFilters]);
+  }, [allLiveStreams]);
 
   const movieContent: ContentItem[] = useMemo(() => {
     const content = (vodStreams || []).map((vod: XtreamVOD) => ({
@@ -174,19 +176,21 @@ export default function Home() {
       streamId: vod.stream_id,
       categoryId: vod.category_id,
     }));
-    // Only apply category manager filters, not homepage layout filters
-    const allFilters = homepageLayout.globalCategoryFilters || [];
+    
+    // Use separate Category Manager storage (for tabs)
+    const categoryManager = JSON.parse(localStorage.getItem('iptv-tab-category-manager') || '{"filters": []}');
+    const allFilters = categoryManager.filters || [];
     const typeFilters = allFilters.filter((f: any) => f.type === 'movie');
     
     if (typeFilters.length === 0) {
-      return content; // No category manager filters set, show everything
+      return content; // No tab category filters set, show everything
     }
     
     return content.filter(item => {
       const globalFilter = typeFilters.find((f: any) => String(f.categoryId) === String(item.categoryId));
       return globalFilter && globalFilter.visible;
     });
-  }, [allVodStreams, homepageLayout.globalCategoryFilters]);
+  }, [allVodStreams]);
 
   const seriesContent: ContentItem[] = useMemo(() => {
     const content = (seriesData || []).map((series: XtreamSeries) => ({
@@ -215,19 +219,21 @@ export default function Home() {
       streamId: series.series_id,
       categoryId: series.category_id,
     }));
-    // Only apply category manager filters, not homepage layout filters
-    const allFilters = homepageLayout.globalCategoryFilters || [];
+    
+    // Use separate Category Manager storage (for tabs)
+    const categoryManager = JSON.parse(localStorage.getItem('iptv-tab-category-manager') || '{"filters": []}');
+    const allFilters = categoryManager.filters || [];
     const typeFilters = allFilters.filter((f: any) => f.type === 'series');
     
     if (typeFilters.length === 0) {
-      return content; // No category manager filters set, show everything
+      return content; // No tab category filters set, show everything
     }
     
     return content.filter(item => {
       const globalFilter = typeFilters.find((f: any) => String(f.categoryId) === String(item.categoryId));
       return globalFilter && globalFilter.visible;
     });
-  }, [allSeriesData, homepageLayout.globalCategoryFilters]);
+  }, [allSeriesData]);
 
   const allContent = useMemo(() => [...liveContent, ...movieContent, ...seriesContent], [liveContent, movieContent, seriesContent]);
   const allTabContent = useMemo(() => [...liveTabContent, ...movieTabContent, ...seriesTabContent], [liveTabContent, movieTabContent, seriesTabContent]);

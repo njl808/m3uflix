@@ -342,35 +342,36 @@ export default function Admin() {
   };
 
   const toggleGlobalCategory = (categoryId: string, type: 'live' | 'movie' | 'series') => {
-    setLayout(prev => {
-      const currentFilters = prev.globalCategoryFilters || [];
-      const existingFilter = currentFilters.find(f => f.categoryId === categoryId);
-      
-      let updatedFilters;
-      if (existingFilter) {
-        // Toggle existing filter
-        updatedFilters = currentFilters.map(filter =>
-          filter.categoryId === categoryId 
-            ? { ...filter, visible: !filter.visible }
-            : filter
-        );
-      } else {
-        // Add new filter as enabled (since default is now hidden)
-        const categoryName = allCategories?.find(c => c.category_id === categoryId)?.category_name || 'Unknown';
-        updatedFilters = [...currentFilters, {
-          categoryId,
-          categoryName,
-          type,
-          visible: true,  // Changed: now we add as visible when user clicks
-          keywords: []
-        }];
-      }
+    // Use separate storage for tab categories (Category Manager)
+    const categoryManager = JSON.parse(localStorage.getItem('iptv-tab-category-manager') || '{"filters": []}');
+    const currentFilters = categoryManager.filters || [];
+    const existingFilter = currentFilters.find((f: any) => f.categoryId === categoryId);
+    
+    let updatedFilters;
+    if (existingFilter) {
+      // Toggle existing filter
+      updatedFilters = currentFilters.map((filter: any) =>
+        filter.categoryId === categoryId 
+          ? { ...filter, visible: !filter.visible }
+          : filter
+      );
+    } else {
+      // Add new filter as enabled (since default is now hidden)
+      const categoryName = allCategories?.find(c => c.category_id === categoryId)?.category_name || 'Unknown';
+      updatedFilters = [...currentFilters, {
+        categoryId,
+        categoryName,
+        type,
+        visible: true,  // Changed: now we add as visible when user clicks
+        keywords: []
+      }];
+    }
 
-      return {
-        ...prev,
-        globalCategoryFilters: updatedFilters
-      };
-    });
+    // Save to separate tab category manager storage
+    localStorage.setItem('iptv-tab-category-manager', JSON.stringify({ filters: updatedFilters }));
+    
+    // Force re-render by updating a dummy state
+    setLayout(prev => ({ ...prev }));
   };
 
   return (
@@ -548,7 +549,10 @@ export default function Admin() {
                         <div key={category.category_id} className="flex items-center justify-between p-2 border rounded">
                           <span className="text-sm">{category.category_name}</span>
                           <Switch
-                            checked={layout.globalCategoryFilters?.find(f => f.categoryId === category.category_id)?.visible ?? true}
+                            checked={(() => {
+                              const categoryManager = JSON.parse(localStorage.getItem('iptv-tab-category-manager') || '{"filters": []}');
+                              return categoryManager.filters?.find((f: any) => f.categoryId === category.category_id)?.visible ?? true;
+                            })()}
                             onCheckedChange={() => toggleGlobalCategory(category.category_id, 'live')}
                             data-testid={`toggle-live-${category.category_id}`}
                           />
@@ -567,7 +571,10 @@ export default function Admin() {
                         <div key={category.category_id} className="flex items-center justify-between p-2 border rounded">
                           <span className="text-sm">{category.category_name}</span>
                           <Switch
-                            checked={layout.globalCategoryFilters?.find(f => f.categoryId === category.category_id)?.visible ?? true}
+                            checked={(() => {
+                              const categoryManager = JSON.parse(localStorage.getItem('iptv-tab-category-manager') || '{"filters": []}');
+                              return categoryManager.filters?.find((f: any) => f.categoryId === category.category_id)?.visible ?? true;
+                            })()}
                             onCheckedChange={() => toggleGlobalCategory(category.category_id, 'movie')}
                             data-testid={`toggle-movie-${category.category_id}`}
                           />
@@ -586,7 +593,10 @@ export default function Admin() {
                         <div key={category.category_id} className="flex items-center justify-between p-2 border rounded">
                           <span className="text-sm">{category.category_name}</span>
                           <Switch
-                            checked={layout.globalCategoryFilters?.find(f => f.categoryId === category.category_id)?.visible ?? true}
+                            checked={(() => {
+                              const categoryManager = JSON.parse(localStorage.getItem('iptv-tab-category-manager') || '{"filters": []}');
+                              return categoryManager.filters?.find((f: any) => f.categoryId === category.category_id)?.visible ?? true;
+                            })()}
                             onCheckedChange={() => toggleGlobalCategory(category.category_id, 'series')}
                             data-testid={`toggle-series-${category.category_id}`}
                           />
