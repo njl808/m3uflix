@@ -141,14 +141,25 @@ export default function Home() {
     const allFilters = homepageLayout.globalCategoryFilters || [];
     const typeFilters = allFilters.filter((f: any) => f.type === 'live');
     
+    console.log('LIVE TAB FILTERS DEBUG:', {
+      totalFilters: allFilters.length,
+      liveFilters: typeFilters.length,
+      liveFilterDetails: typeFilters,
+      contentLength: content.length
+    });
+    
     if (typeFilters.length === 0) {
+      console.log('LIVE: No filters, showing all content');
       return content; // No category manager filters set, show everything
     }
     
-    return content.filter(item => {
+    const filteredContent = content.filter(item => {
       const globalFilter = typeFilters.find((f: any) => String(f.categoryId) === String(item.categoryId));
       return globalFilter && globalFilter.visible;
     });
+    
+    console.log('LIVE: Filtered result:', filteredContent.length, 'items');
+    return filteredContent;
   }, [allLiveStreams, homepageLayout.globalCategoryFilters]);
 
   const movieContent: ContentItem[] = useMemo(() => {
@@ -178,14 +189,25 @@ export default function Home() {
     const allFilters = homepageLayout.globalCategoryFilters || [];
     const typeFilters = allFilters.filter((f: any) => f.type === 'movie');
     
+    console.log('MOVIE TAB FILTERS DEBUG:', {
+      totalFilters: allFilters.length,
+      movieFilters: typeFilters.length,
+      movieFilterDetails: typeFilters,
+      contentLength: content.length
+    });
+    
     if (typeFilters.length === 0) {
+      console.log('MOVIE: No filters, showing all content');
       return content; // No category manager filters set, show everything
     }
     
-    return content.filter(item => {
+    const filteredContent = content.filter(item => {
       const globalFilter = typeFilters.find((f: any) => String(f.categoryId) === String(item.categoryId));
       return globalFilter && globalFilter.visible;
     });
+    
+    console.log('MOVIE: Filtered result:', filteredContent.length, 'items');
+    return filteredContent;
   }, [allVodStreams, homepageLayout.globalCategoryFilters]);
 
   const seriesContent: ContentItem[] = useMemo(() => {
