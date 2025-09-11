@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation, useRoute } from "wouter";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { ArrowLeft, Play, Pause, Volume2, VolumeX, Maximize, RotateCcw, ExternalLink } from "lucide-react";
 import { useXtreamConfig, useXtreamAPI } from "@/hooks/use-xtream-api";
 import Hls from "hls.js";
@@ -10,18 +11,17 @@ export default function Player() {
   const [location, setLocation] = useLocation();
   const { config } = useXtreamConfig();
   const api = useXtreamAPI(config);
-  
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const playerContainerRef = useRef<HTMLDivElement>(null);
   const loadTokenRef = useRef<number>(0);
-  // Timeout management refs to prevent race conditions
-  const playTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const unmuteHintTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true); // Start muted for better autoplay
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(0.5);
+  const [lastVolume, setLastVolume] = useState(0.5);
   const [showControls, setShowControls] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,27 +36,10 @@ export default function Player() {
   // Generate multiple stream URLs for fallback using enhanced API
   const streamUrls = api && streamId ? api.buildStreamUrls(streamId, streamType) : [];
 
-  // IPTV-optimized timeout helpers for better streaming reliability
-  const playDelay = useMemo(() => streamType === 'live' ? 3000 : 10000, [streamType]);
-  const getRetryDelay = useCallback((attempt: number) => {
-    const base = streamType === 'live' ? 4000 : 9000;
-    const max = streamType === 'live' ? 7000 : 15000;
-    return Math.min(Math.round(base * Math.pow(1.5, Math.max(0, attempt))), max);
-  }, [streamType]);
-
-  // Function to clear all pending timeouts to prevent race conditions
-  const clearAllTimeouts = useCallback(() => {
-    if (playTimeoutRef.current) {
-      clearTimeout(playTimeoutRef.current);
-      playTimeoutRef.current = null;
-    }
-    if (retryTimeoutRef.current) {
-      clearTimeout(retryTimeoutRef.current);
-      retryTimeoutRef.current = null;
-    }
-    if (unmuteHintTimeoutRef.current) {
-      clearTimeout(unmuteHintTimeoutRef.current);
-      unmuteHintTimeoutRef.current = null;
+  // Focus container on mount to enable keyboard shortcuts
+  useEffect(() => {
+    if (playerContainerRef.current) {
+      playerContainerRef.current.focus();
     }
   }, []);
 
@@ -123,10 +106,7 @@ export default function Player() {
   const loadStream = async (urlIndex = 0) => {
     // Generate unique load token to prevent race conditions
     const currentToken = ++loadTokenRef.current;
-    
-    // Clear all pending timeouts to prevent race conditions from previous attempts
-    clearAllTimeouts();
-    
+
     if (!streamUrls.length || !videoRef.current || urlIndex >= streamUrls.length) {
       if (streamType === 'live') {
         setError('Live stream formats not available. Try external player below.');
@@ -139,7 +119,7 @@ export default function Player() {
 
     const streamData = streamUrls[urlIndex];
     const { url, format, description } = streamData;
-    
+
     console.log(`Trying stream ${urlIndex + 1}/${streamUrls.length}: ${format} - ${url}`);
     setCurrentFormat(format);
     setIsLoading(true);
@@ -161,7 +141,7 @@ export default function Player() {
       // Check if it's an HLS stream and HLS.js is supported
       if ((url.includes('.m3u8') || format === 'HLS') && Hls.isSupported()) {
         console.log('Using HLS.js for playback');
-        
+
         const hls = new Hls({
           enableWorker: true,
           lowLatencyMode: streamType === 'live',
@@ -170,16 +150,6 @@ export default function Player() {
           maxMaxBufferLength: 600,
           startLevel: -1,
           debug: false,
-          // Increased timeouts and retries for live streaming stability
-          fragLoadingTimeOut: streamType === 'live' ? 15000 : 10000,
-          levelLoadingTimeOut: streamType === 'live' ? 15000 : 10000,
-          manifestLoadingTimeOut: streamType === 'live' ? 15000 : 10000,
-          fragLoadingMaxRetry: streamType === 'live' ? 4 : 3,
-          levelLoadingMaxRetry: streamType === 'live' ? 4 : 3,
-          manifestLoadingMaxRetry: streamType === 'live' ? 4 : 3,
-          fragLoadingRetryDelay: 1000,
-          levelLoadingRetryDelay: 1000,
-          manifestLoadingRetryDelay: 1000,
         });
 
         // Proper HLS.js initialization order: attachMedia first, then loadSource
@@ -201,24 +171,13 @@ export default function Player() {
               videoRef.current.muted = true;
               setIsMuted(true);
             }
-            
-            // Apply playDelay for VOD to allow proper buffering, immediate for live
-            const hlsPlayDelay = streamType === 'live' ? 0 : playDelay;
-            playTimeoutRef.current = setTimeout(() => {
-              if (currentToken === loadTokenRef.current) {
-                videoRef.current?.play().then(() => {
-                  setShowUnmuteHint(true);
-                  unmuteHintTimeoutRef.current = setTimeout(() => {
-                    if (currentToken === loadTokenRef.current) {
-                      setShowUnmuteHint(false);
-                    }
-                  }, 5000);
-                }).catch((err) => {
-                  console.error('HLS autoplay failed:', err);
-                  setError('Click play to start the video');
-                });
-              }
-            }, hlsPlayDelay);
+            videoRef.current?.play().then(() => {
+              setShowUnmuteHint(true);
+              setTimeout(() => setShowUnmuteHint(false), 5000);
+            }).catch((err) => {
+              console.error('HLS autoplay failed:', err);
+              setError('Click play to start the video');
+            });
           }
         });
 
@@ -228,11 +187,7 @@ export default function Player() {
             setIsLoading(false);
             if (urlIndex < streamUrls.length - 1) {
               console.log('HLS failed, trying next format...');
-              retryTimeoutRef.current = setTimeout(() => {
-                if (currentToken === loadTokenRef.current) {
-                  loadStream(urlIndex + 1);
-                }
-              }, getRetryDelay(urlIndex));
+              setTimeout(() => loadStream(urlIndex + 1), 1000);
             } else if (streamType === 'live') {
               setError('Live stream failed. Please try external player below.');
             } else {
@@ -250,30 +205,22 @@ export default function Player() {
           setIsMuted(true);
           videoRef.current.load();
           setIsLoading(false);
-          
-          playTimeoutRef.current = setTimeout(() => {
+
+          setTimeout(() => {
             if (currentToken === loadTokenRef.current) {
               videoRef.current?.play().then(() => {
                 setShowUnmuteHint(true);
-                unmuteHintTimeoutRef.current = setTimeout(() => {
-                  if (currentToken === loadTokenRef.current) {
-                    setShowUnmuteHint(false);
-                  }
-                }, 5000);
+                setTimeout(() => setShowUnmuteHint(false), 5000);
               }).catch((err) => {
                 console.error('Native HLS autoplay failed:', err);
                 if (urlIndex < streamUrls.length - 1) {
-                  retryTimeoutRef.current = setTimeout(() => {
-                    if (currentToken === loadTokenRef.current) {
-                      loadStream(urlIndex + 1);
-                    }
-                  }, getRetryDelay(urlIndex));
+                  loadStream(urlIndex + 1);
                 } else {
                   setError('Click play to start the video');
                 }
               });
             }
-          }, playDelay);
+          }, 1000);
         }
 
       } else {
@@ -285,31 +232,23 @@ export default function Player() {
           setIsMuted(true);
           videoRef.current.load();
           setIsLoading(false);
-          
-          playTimeoutRef.current = setTimeout(() => {
+
+          setTimeout(() => {
             if (currentToken === loadTokenRef.current) {
               videoRef.current?.play().then(() => {
                 setShowUnmuteHint(true);
-                unmuteHintTimeoutRef.current = setTimeout(() => {
-                  if (currentToken === loadTokenRef.current) {
-                    setShowUnmuteHint(false);
-                  }
-                }, 5000);
+                setTimeout(() => setShowUnmuteHint(false), 5000);
               }).catch((err) => {
                 console.error('Direct playback failed:', err);
                 if (urlIndex < streamUrls.length - 1) {
                   console.log('Direct playback failed, trying next format...');
-                  retryTimeoutRef.current = setTimeout(() => {
-                    if (currentToken === loadTokenRef.current) {
-                      loadStream(urlIndex + 1);
-                    }
-                  }, getRetryDelay(urlIndex));
+                  setTimeout(() => loadStream(urlIndex + 1), 1000);
                 } else {
                   setError('Unable to play this stream with any available format');
                 }
               });
             }
-          }, playDelay);
+          }, 1000);
         }
       }
 
@@ -318,11 +257,7 @@ export default function Player() {
       if (currentToken === loadTokenRef.current) {
         setIsLoading(false);
         if (urlIndex < streamUrls.length - 1) {
-          retryTimeoutRef.current = setTimeout(() => {
-            if (currentToken === loadTokenRef.current) {
-              loadStream(urlIndex + 1);
-            }
-          }, getRetryDelay(urlIndex));
+          setTimeout(() => loadStream(urlIndex + 1), 1000);
         } else {
           setError('Failed to load stream with any available format');
         }
@@ -332,17 +267,10 @@ export default function Player() {
 
   // Load stream when component mounts or stream changes
   useEffect(() => {
-    console.log('[PLAYER] Effect triggered - api:', !!api, 'streamId:', streamId, 'streamUrls.length:', streamUrls.length);
-    
     if (streamUrls.length > 0) {
-      console.log('[PLAYER] Starting stream load:', streamUrls[0]);
-      // Generate new load token to cancel any existing attempts
-      loadTokenRef.current = Date.now();
       loadStream(0);
-    } else {
-      console.log('[PLAYER] No streamUrls available - api:', !!api, 'streamId:', streamId);
     }
-    
+
     // Cleanup on unmount
     return () => {
       if (hlsRef.current) {
@@ -350,11 +278,11 @@ export default function Player() {
         hlsRef.current = null;
       }
     };
-  }, [api, streamId, streamType, streamUrls.length]); // Added api and streamUrls.length as dependencies
+  }, [streamId, streamType]);
 
   const togglePlay = () => {
     if (!videoRef.current) return;
-    
+
     if (isPlaying) {
       videoRef.current.pause();
     } else {
@@ -366,10 +294,38 @@ export default function Player() {
     }
   };
 
+  const handleSeek = (time: number) => {
+    if (videoRef.current && isFinite(time)) {
+      videoRef.current.currentTime = time;
+      setCurrentTime(time);
+    }
+  };
+
+  const handleVolumeChange = (newVolume: number) => {
+    if (videoRef.current) {
+      videoRef.current.volume = newVolume;
+      setVolume(newVolume);
+
+      if (newVolume > 0) {
+        setIsMuted(false);
+        videoRef.current.muted = false;
+        setLastVolume(newVolume);
+      } else {
+        setIsMuted(true);
+        videoRef.current.muted = true;
+      }
+    }
+  };
+
   const toggleMute = () => {
     if (!videoRef.current) return;
-    videoRef.current.muted = !isMuted;
-    setIsMuted(!isMuted);
+    if (isMuted || volume === 0) {
+      const newVolume = lastVolume > 0 ? lastVolume : 0.5;
+      handleVolumeChange(newVolume);
+    } else {
+      setLastVolume(volume);
+      handleVolumeChange(0);
+    }
     setShowUnmuteHint(false);
   };
 
@@ -388,8 +344,6 @@ export default function Player() {
   };
 
   const refreshStream = () => {
-    // Generate new load token to cancel any existing attempts
-    loadTokenRef.current = Date.now();
     setRetryCount(prev => prev + 1);
     setError(null);
     loadStream(0);
@@ -399,7 +353,7 @@ export default function Player() {
     if (streamUrls.length > 0 && api && streamId) {
       // Create direct URLs for external players (bypassing proxy)
       const directUrls = [];
-      
+
       if (streamType === 'live') {
         directUrls.push({
           url: api.buildDirectStreamUrl(streamId, streamType, 'm3u8'),
@@ -423,14 +377,14 @@ export default function Player() {
           description: 'Direct MKV stream'
         });
       }
-      
+
       const allUrls = [...streamUrls, ...directUrls];
       const primaryUrl = directUrls[0]?.url || streamUrls[0]?.url;
-      
+
       // Create VLC protocol link
       const vlcUrl = `vlc://${primaryUrl}`;
       window.open(vlcUrl, '_blank');
-      
+
       // Also show all URLs for manual copying
       const newWindow = window.open('', '_blank');
       if (newWindow) {
@@ -440,7 +394,7 @@ export default function Player() {
             <body style="font-family: Arial, sans-serif; padding: 20px;">
               <h2>IPTV Stream URLs</h2>
               <p><strong>Copy any URL to your preferred media player:</strong></p>
-              
+
               <h3>🎯 Direct URLs (Recommended for External Players)</h3>
               ${directUrls.map((stream, index) => `
                 <div style="margin: 10px 0; padding: 10px; border: 2px solid #4CAF50; border-radius: 5px; background: #f8fff8;">
@@ -449,7 +403,7 @@ export default function Player() {
                   <button onclick="navigator.clipboard.writeText('${stream.url}')" style="margin-top: 5px; padding: 5px 10px;">📋 Copy URL</button>
                 </div>
               `).join('')}
-              
+
               <h3>🌐 Proxied URLs (For browser compatibility)</h3>
               ${streamUrls.map((stream, index) => `
                 <div style="margin: 10px 0; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
@@ -458,7 +412,7 @@ export default function Player() {
                   <button onclick="navigator.clipboard.writeText('${window.location.origin}${stream.url}')" style="margin-top: 5px; padding: 5px 10px;">📋 Copy URL</button>
                 </div>
               `).join('')}
-              
+
               <div style="margin-top: 30px; padding: 20px; background: #f0f8ff; border-radius: 10px;">
                 <h3>📱 Recommended Media Players</h3>
                 <ul style="line-height: 1.8;">
@@ -478,14 +432,56 @@ export default function Player() {
     }
   };
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const playerElement = playerContainerRef.current;
+    if (!playerElement) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement).tagName === 'INPUT') return; // Don't trigger on input fields
+
+      e.preventDefault();
+      switch (e.key) {
+        case ' ':
+          togglePlay();
+          break;
+        case 'f':
+          toggleFullscreen();
+          break;
+        case 'm':
+          toggleMute();
+          break;
+        case 'ArrowRight':
+          if (streamType !== 'live') handleSeek(currentTime + 5);
+          break;
+        case 'ArrowLeft':
+          if (streamType !== 'live') handleSeek(currentTime - 5);
+          break;
+        case 'ArrowUp':
+          handleVolumeChange(Math.min(volume + 0.05, 1));
+          break;
+        case 'ArrowDown':
+          handleVolumeChange(Math.max(volume - 0.05, 0));
+          break;
+      }
+    };
+
+    playerElement.addEventListener('keydown', handleKeyDown);
+    return () => playerElement.removeEventListener('keydown', handleKeyDown);
+  }, [isPlaying, isMuted, isFullscreen, currentTime, duration, volume, streamType]);
+
   const formatTime = (time: number) => {
-    // Handle live streams and invalid time values
-    if (!isFinite(time) || isNaN(time)) {
+    if (!isFinite(time) || isNaN(time) || time < 0) {
       return streamType === 'live' ? 'LIVE' : '00:00';
     }
-    const minutes = Math.floor(time / 60);
+    const hours = Math.floor(time / 3600);
+    const minutes = Math.floor((time % 3600) / 60);
     const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
   if (!streamId || !streamType) {
@@ -504,9 +500,11 @@ export default function Player() {
 
   return (
     <div 
-      className="min-h-screen bg-black relative overflow-hidden"
+      className="min-h-screen bg-black relative overflow-hidden outline-none"
       onMouseMove={() => setShowControls(true)}
       data-testid="player-container"
+      ref={playerContainerRef}
+      tabIndex={-1}
     >
       {/* Video Element */}
       <video
@@ -587,8 +585,24 @@ export default function Player() {
           )}
 
           {/* Bottom Controls */}
-          <div className="absolute bottom-0 left-0 right-0 p-6">
-            <div className="flex items-center space-x-4">
+          <div className="absolute bottom-0 left-0 right-0 p-6 space-y-3">
+            {/* Seek Bar (VOD/Series only) */}
+            {streamType !== 'live' && (
+              <div className="flex items-center gap-4">
+                <span className="text-white text-sm font-mono w-16 text-center">{formatTime(currentTime)}</span>
+                <Slider
+                  value={[currentTime]}
+                  max={duration || 0}
+                  step={1}
+                  onValueChange={(value) => handleSeek(value[0])}
+                  className="w-full"
+                />
+                <span className="text-white text-sm font-mono w-16 text-center">{formatTime(duration)}</span>
+              </div>
+            )}
+
+            {/* Main Controls Row */}
+            <div className="flex items-center space-x-2">
               <Button
                 variant="ghost"
                 size="sm"
@@ -599,37 +613,32 @@ export default function Player() {
                 {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
               </Button>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={toggleMute}
-                className="text-white hover:bg-white/20"
-                data-testid="button-mute"
-              >
-                {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-              </Button>
-
-              {/* Time Display */}
-              <div className="text-white text-sm">
-                {streamType === 'live' ? (
-                  <span className="bg-red-600 px-2 py-1 rounded text-xs font-bold">● LIVE</span>
-                ) : (
-                  `${formatTime(currentTime)} / ${formatTime(duration)}`
-                )}
+              <div className="flex items-center gap-2 w-32">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleMute}
+                  className="text-white hover:bg-white/20"
+                  data-testid="button-mute"
+                >
+                  {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                </Button>
+                <Slider
+                  value={[isMuted ? 0 : volume]}
+                  max={1}
+                  step={0.05}
+                  onValueChange={(value) => handleVolumeChange(value[0])}
+                  className="w-full"
+                />
               </div>
 
+              {streamType === 'live' && (
+                <div className="text-white text-sm">
+                  <span className="bg-red-600 px-2 py-1 rounded text-xs font-bold">● LIVE</span>
+                </div>
+              )}
+
               <div className="flex-1" />
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={refreshStream}
-                className="text-white hover:bg-white/20"
-                data-testid="button-refresh-controls"
-              >
-                <RotateCcw className="w-5 h-5" />
-              </Button>
-
               <Button
                 variant="ghost"
                 size="sm"
@@ -638,6 +647,15 @@ export default function Player() {
                 data-testid="button-fullscreen"
               >
                 <Maximize className="w-5 h-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={refreshStream}
+                className="text-white hover:bg-white/20"
+                data-testid="button-refresh-controls"
+              >
+                <RotateCcw className="w-5 h-5" />
               </Button>
             </div>
           </div>
