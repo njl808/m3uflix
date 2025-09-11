@@ -138,7 +138,7 @@ export default function Home() {
     }
     
     return content.filter(item => {
-      const globalFilter = typeFilters.find((f: any) => f.categoryId === item.categoryId);
+      const globalFilter = typeFilters.find((f: any) => String(f.categoryId) === String(item.categoryId));
       return globalFilter && globalFilter.visible;
     });
   }, [liveStreams, homepageLayout.globalCategoryFilters]);
@@ -175,7 +175,7 @@ export default function Home() {
     }
     
     return content.filter(item => {
-      const globalFilter = typeFilters.find((f: any) => f.categoryId === item.categoryId);
+      const globalFilter = typeFilters.find((f: any) => String(f.categoryId) === String(item.categoryId));
       return globalFilter && globalFilter.visible;
     });
   }, [vodStreams, homepageLayout.globalCategoryFilters]);
@@ -216,14 +216,17 @@ export default function Home() {
     }
     
     return content.filter(item => {
-      const globalFilter = typeFilters.find((f: any) => f.categoryId === item.categoryId);
+      const globalFilter = typeFilters.find((f: any) => String(f.categoryId) === String(item.categoryId));
       return globalFilter && globalFilter.visible;
     });
   }, [seriesData, homepageLayout.globalCategoryFilters]);
 
   const allContent = useMemo(() => [...liveContent, ...movieContent, ...seriesContent], [liveContent, movieContent, seriesContent]);
   const allTabContent = useMemo(() => [...liveTabContent, ...movieTabContent, ...seriesTabContent], [liveTabContent, movieTabContent, seriesTabContent]);
-  const searchResults = useSearch(filteredContent.length > 0 ? filteredContent : allContent, searchQuery);
+  
+  // Use the correct base content for search depending on current section
+  const baseContentForSearch = filteredContent.length > 0 ? filteredContent : (currentSection === 'home' ? allContent : allTabContent);
+  const searchResults = useSearch(baseContentForSearch, searchQuery);
   const favoriteContent = useMemo(() => (filteredContent.length > 0 ? filteredContent : allContent).filter(item => isFavorite(item.id)), [filteredContent, allContent, favorites]);
 
   // Boutique cycling logic - use raw API data to bypass filters
@@ -375,6 +378,7 @@ export default function Home() {
     setCurrentSection(section);
     setSearchQuery('');
     setSelectedCategory('');
+    setFilteredContent([]); // Clear any previous filtering when switching sections
   };
 
   const getContentForSection = () => {
@@ -541,7 +545,7 @@ export default function Home() {
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold">{getSectionTitle()}</h2>
                 <ContentFilter
-                  content={allContent}
+                  content={currentSection === 'home' ? allContent : allTabContent}
                   categories={[
                     ...(liveCategories || []),
                     ...(vodCategories || []),
