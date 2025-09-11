@@ -374,6 +374,9 @@ export default function Admin() {
     const updatedManager = { filters: updatedFilters };
     setTabCategoryManager(updatedManager);
     localStorage.setItem('iptv-tab-category-manager', JSON.stringify(updatedManager));
+    
+    // Trigger storage event for same-window updates
+    window.dispatchEvent(new Event('storage'));
   };
 
   return (

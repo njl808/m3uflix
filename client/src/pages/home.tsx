@@ -127,6 +127,27 @@ export default function Home() {
     return getFilteredContent(content);
   }, [liveStreams, homepageLayout]);
 
+  // Tab Category Manager state
+  const [tabCategoryFilters, setTabCategoryFilters] = useState(() => {
+    const saved = localStorage.getItem('iptv-tab-category-manager');
+    return saved ? JSON.parse(saved).filters || [] : [];
+  });
+
+  // Listen for category manager changes
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const saved = localStorage.getItem('iptv-tab-category-manager');
+      setTabCategoryFilters(saved ? JSON.parse(saved).filters || [] : []);
+    };
+    
+    // Listen for both cross-window storage events and manual events
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
   // Tab content (controlled by separate Category Manager - NOT Layout Settings)
   const liveTabContent: ContentItem[] = useMemo(() => {
     const content = (allLiveStreams || []).map((stream: XtreamStream) => ({
@@ -138,10 +159,7 @@ export default function Home() {
       categoryId: stream.category_id,
     }));
     
-    // Use separate Category Manager storage (for tabs)
-    const categoryManager = JSON.parse(localStorage.getItem('iptv-tab-category-manager') || '{"filters": []}');
-    const allFilters = categoryManager.filters || [];
-    const typeFilters = allFilters.filter((f: any) => f.type === 'live');
+    const typeFilters = tabCategoryFilters.filter((f: any) => f.type === 'live');
     
     if (typeFilters.length === 0) {
       return content; // No tab category filters set, show everything
@@ -151,7 +169,7 @@ export default function Home() {
       const globalFilter = typeFilters.find((f: any) => String(f.categoryId) === String(item.categoryId));
       return globalFilter && globalFilter.visible;
     });
-  }, [allLiveStreams]);
+  }, [allLiveStreams, tabCategoryFilters]);
 
   const movieContent: ContentItem[] = useMemo(() => {
     const content = (vodStreams || []).map((vod: XtreamVOD) => ({
@@ -177,10 +195,7 @@ export default function Home() {
       categoryId: vod.category_id,
     }));
     
-    // Use separate Category Manager storage (for tabs)
-    const categoryManager = JSON.parse(localStorage.getItem('iptv-tab-category-manager') || '{"filters": []}');
-    const allFilters = categoryManager.filters || [];
-    const typeFilters = allFilters.filter((f: any) => f.type === 'movie');
+    const typeFilters = tabCategoryFilters.filter((f: any) => f.type === 'movie');
     
     if (typeFilters.length === 0) {
       return content; // No tab category filters set, show everything
@@ -190,7 +205,7 @@ export default function Home() {
       const globalFilter = typeFilters.find((f: any) => String(f.categoryId) === String(item.categoryId));
       return globalFilter && globalFilter.visible;
     });
-  }, [allVodStreams]);
+  }, [allVodStreams, tabCategoryFilters]);
 
   const seriesContent: ContentItem[] = useMemo(() => {
     const content = (seriesData || []).map((series: XtreamSeries) => ({
@@ -220,10 +235,7 @@ export default function Home() {
       categoryId: series.category_id,
     }));
     
-    // Use separate Category Manager storage (for tabs)
-    const categoryManager = JSON.parse(localStorage.getItem('iptv-tab-category-manager') || '{"filters": []}');
-    const allFilters = categoryManager.filters || [];
-    const typeFilters = allFilters.filter((f: any) => f.type === 'series');
+    const typeFilters = tabCategoryFilters.filter((f: any) => f.type === 'series');
     
     if (typeFilters.length === 0) {
       return content; // No tab category filters set, show everything
@@ -233,7 +245,7 @@ export default function Home() {
       const globalFilter = typeFilters.find((f: any) => String(f.categoryId) === String(item.categoryId));
       return globalFilter && globalFilter.visible;
     });
-  }, [allSeriesData]);
+  }, [allSeriesData, tabCategoryFilters]);
 
   const allContent = useMemo(() => [...liveContent, ...movieContent, ...seriesContent], [liveContent, movieContent, seriesContent]);
   const allTabContent = useMemo(() => [...liveTabContent, ...movieTabContent, ...seriesTabContent], [liveTabContent, movieTabContent, seriesTabContent]);
