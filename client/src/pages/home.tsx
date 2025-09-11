@@ -141,12 +141,11 @@ export default function Home() {
     const allFilters = homepageLayout.globalCategoryFilters || [];
     const typeFilters = allFilters.filter((f: any) => f.type === 'live');
     
-    console.log('LIVE TAB FILTERS DEBUG:', {
-      totalFilters: allFilters.length,
-      liveFilters: typeFilters.length,
-      liveFilterDetails: typeFilters,
-      contentLength: content.length
-    });
+    console.log('=== LIVE TAB FILTERS DEBUG ===');
+    console.log('Total filters:', allFilters.length);
+    console.log('Live filters found:', typeFilters.length);
+    console.log('Live filter details:', JSON.stringify(typeFilters, null, 2));
+    console.log('Total content length:', content.length);
     
     if (typeFilters.length === 0) {
       console.log('LIVE: No filters, showing all content');
@@ -189,12 +188,11 @@ export default function Home() {
     const allFilters = homepageLayout.globalCategoryFilters || [];
     const typeFilters = allFilters.filter((f: any) => f.type === 'movie');
     
-    console.log('MOVIE TAB FILTERS DEBUG:', {
-      totalFilters: allFilters.length,
-      movieFilters: typeFilters.length,
-      movieFilterDetails: typeFilters,
-      contentLength: content.length
-    });
+    console.log('=== MOVIE TAB FILTERS DEBUG ===');
+    console.log('Total filters:', allFilters.length);
+    console.log('Movie filters found:', typeFilters.length);
+    console.log('Movie filter details:', JSON.stringify(typeFilters, null, 2));
+    console.log('Total content length:', content.length);
     
     if (typeFilters.length === 0) {
       console.log('MOVIE: No filters, showing all content');
